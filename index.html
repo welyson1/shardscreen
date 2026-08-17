@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Screen Share Pro - Simultâneo</title>
+    <title>P2P Screen Share Pro - Conexão Direta</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom scrollbar for logs */
@@ -23,14 +23,12 @@
             border: 1px solid #374151;
         }
         
-        /* Remote video takes full container */
         #remote-video {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
 
-        /* Local video as Picture-in-Picture */
         #local-video {
             position: absolute;
             bottom: 1rem;
@@ -39,10 +37,10 @@
             min-width: 150px;
             aspect-ratio: 16 / 9;
             object-fit: cover;
-            border: 2px solid #3b82f6; /* Tailwind blue-500 */
+            border: 2px solid #3b82f6;
             border-radius: 0.5rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            background-color: #111827; /* Tailwind gray-900 */
+            background-color: #111827;
             z-index: 20;
             transition: opacity 0.3s ease;
         }
@@ -55,21 +53,31 @@
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                <h1 class="text-xl font-bold">P2P Screen Share <span class="text-xs bg-blue-600 px-2 py-1 rounded text-white ml-2">E2EE Simultâneo</span></h1>
+                <h1 class="text-xl font-bold">P2P Screen Share <span class="text-xs bg-green-600 px-2 py-1 rounded text-white ml-2">Estável E2EE</span></h1>
             </div>
-            <div id="auth-status" class="text-sm text-green-400">P2P Offline/Local</div>
+            <div id="auth-status" class="text-sm text-green-400">P2P Direto</div>
         </div>
     </header>
 
     <main class="flex-grow max-w-6xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <!-- Left Column: Controls & Room -->
-        <div class="lg:col-span-1 space-y-6">
+        <div class="lg:col-span-1 space-y-4">
             
             <!-- Room Management -->
             <div class="bg-gray-800 rounded-xl p-5 shadow-lg border border-gray-700">
-                <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">1. Conexão Manual</h2>
+                <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">1. Configuração e Conexão</h2>
                 
+                <!-- Media Mode Choice -->
+                <div class="mb-5 bg-gray-900 p-3 rounded border border-gray-700">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">O que você deseja fazer nesta sessão?</label>
+                    <select id="media-mode" class="w-full bg-gray-800 text-white text-sm rounded border border-gray-600 p-2 focus:border-blue-500 focus:outline-none">
+                        <option value="share">Compartilhar minha tela e ver a do amigo</option>
+                        <option value="watch">Apenas ver a tela do amigo</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-2">Dica: O navegador pedirá permissão da tela ANTES de gerar o código para garantir a sincronia de vídeo.</p>
+                </div>
+
                 <!-- Tabs -->
                 <div class="flex gap-2 mb-4">
                     <button id="tab-host" class="flex-1 bg-blue-600 text-white py-2 rounded text-sm font-bold transition">Sou Anfitrião</button>
@@ -78,20 +86,20 @@
 
                 <!-- Host View -->
                 <div id="view-host" class="space-y-3">
-                    <button id="btn-generate-offer" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded text-sm transition">Passo 1: Gerar Convite</button>
+                    <button id="btn-generate-offer" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded text-sm transition">Passo 1: Iniciar e Gerar Convite</button>
                     <textarea id="host-invite-text" readonly class="w-full h-16 text-xs bg-gray-900 border border-gray-600 rounded p-2 text-gray-400 focus:outline-none" placeholder="Aguarde o convite ser gerado..."></textarea>
                     <button onclick="copyToClipboard('host-invite-text')" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1 rounded text-xs mb-2 transition">Copiar Convite (Envie ao amigo)</button>
                     
                     <hr class="border-gray-700 my-2">
                     
                     <textarea id="host-paste-answer" class="w-full h-16 text-xs bg-gray-900 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="Cole a Resposta do seu amigo aqui..."></textarea>
-                    <button id="btn-connect-host" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded text-sm transition">Passo 3: Conectar!</button>
+                    <button id="btn-connect-host" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded text-sm transition">Passo 3: Conectar P2P!</button>
                 </div>
 
                 <!-- Guest View -->
                 <div id="view-guest" class="space-y-3 hidden">
                     <textarea id="guest-paste-offer" class="w-full h-16 text-xs bg-gray-900 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-blue-500" placeholder="Cole o Convite do anfitrião aqui..."></textarea>
-                    <button id="btn-generate-answer" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded text-sm transition">Passo 2: Gerar Resposta</button>
+                    <button id="btn-generate-answer" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded text-sm transition">Passo 2: Iniciar e Gerar Resposta</button>
                     
                     <hr class="border-gray-700 my-2">
 
@@ -99,45 +107,29 @@
                     <button onclick="copyToClipboard('guest-answer-text')" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1 rounded text-xs transition">Copiar Resposta (Devolva ao anfitrião)</button>
                 </div>
 
-                <!-- Participants Room Status -->
-                <div class="bg-gray-900 rounded p-3 mt-4 space-y-2 border border-gray-700">
-                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Status na Sala</h3>
-                    <div class="flex items-center justify-between text-sm">
-                        <span>Anfitrião</span>
-                        <span id="status-host" class="flex items-center gap-1 text-yellow-400"><span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span> Aguardando...</span>
-                    </div>
-                    <div class="flex items-center justify-between text-sm">
-                        <span>Convidado</span>
-                        <span id="status-guest" class="flex items-center gap-1 text-red-400"><span class="w-2 h-2 rounded-full bg-red-400"></span> Desconectado</span>
-                    </div>
+            </div>
+
+            <!-- Participants Room Status -->
+            <div class="bg-gray-900 rounded-xl p-4 shadow-lg border border-gray-700 space-y-2">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Status na Sala</h3>
+                <div class="flex items-center justify-between text-sm">
+                    <span>Anfitrião</span>
+                    <span id="status-host" class="flex items-center gap-1 text-yellow-400"><span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span> Aguardando...</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span>Convidado</span>
+                    <span id="status-guest" class="flex items-center gap-1 text-red-400"><span class="w-2 h-2 rounded-full bg-red-400"></span> Desconectado</span>
                 </div>
             </div>
 
-            <!-- Screen Share Controls -->
-            <div class="bg-gray-800 rounded-xl p-5 shadow-lg border border-gray-700">
-                <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">2. Compartilhamento</h2>
-                <p class="text-sm text-gray-400 mb-4">Compartilhamento simultâneo ativado. Vocês dois podem compartilhar a tela ao mesmo tempo.</p>
-                
-                <button id="btn-start-share" disabled class="w-full bg-gray-600 text-gray-300 font-medium py-3 px-4 rounded transition cursor-not-allowed opacity-50 flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                    Compartilhar Minha Tela
-                </button>
-
-                <button id="btn-stop-share" class="hidden w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded transition flex items-center justify-center gap-2 mt-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
-                    Parar Compartilhamento
-                </button>
-            </div>
-
             <!-- Debug Logs -->
-            <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700 flex flex-col" style="height: 300px;">
+            <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700 flex flex-col" style="height: 250px;">
                 <div class="p-3 border-b border-gray-700 bg-gray-800 rounded-t-xl flex justify-between items-center">
                     <h2 class="text-sm font-semibold text-gray-300">Terminal de Depuração</h2>
                     <button id="btn-clear-logs" class="text-xs text-gray-500 hover:text-white">Limpar</button>
                 </div>
                 <div id="logs-container" class="flex-grow p-3 overflow-y-auto text-xs font-mono text-gray-400 space-y-1">
-                    <!-- Logs will appear here -->
-                    <div><span class="text-blue-400">[Sistema]</span> Inicializando aplicativo...</div>
+                    <div><span class="text-blue-400">[Sistema]</span> Inicializando modo estável...</div>
                 </div>
             </div>
 
@@ -155,12 +147,12 @@
                 <!-- Overlay messages -->
                 <div id="video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-80 z-10 transition-opacity duration-300">
                     <svg class="w-16 h-16 text-gray-600 mb-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    <p id="video-overlay-text" class="text-lg text-gray-400 text-center px-4">Aguardando seu amigo compartilhar a tela...</p>
+                    <p id="video-overlay-text" class="text-lg text-gray-400 text-center px-4">Conecte-se para iniciar o compartilhamento de tela</p>
                 </div>
             </div>
             
             <div class="mt-4 flex justify-between text-sm text-gray-500">
-                <div>Conexão: <span id="webrtc-status" class="font-mono text-yellow-500">Desconectado</span></div>
+                <div>Conexão WebRTC: <span id="webrtc-status" class="font-mono text-yellow-500">Desconectado</span></div>
                 <div>Criptografia: <span class="text-green-500 flex items-center gap-1 inline-flex"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> E2EE Ativa</span></div>
             </div>
         </div>
@@ -183,13 +175,13 @@
         let localStream = null;
         let iceGatheringFinalized = false;
         let iceTimeoutTimer = null;
-        let controlChannel = null; // NOVO: Canal de controle de estado
 
         // UI Elements
         const tabHost = document.getElementById('tab-host');
         const tabGuest = document.getElementById('tab-guest');
         const viewHost = document.getElementById('view-host');
         const viewGuest = document.getElementById('view-guest');
+        const mediaModeSelect = document.getElementById('media-mode');
 
         const btnGenerateOffer = document.getElementById('btn-generate-offer');
         const hostInviteText = document.getElementById('host-invite-text');
@@ -203,9 +195,6 @@
         const statusHost = document.getElementById('status-host');
         const statusGuest = document.getElementById('status-guest');
         const webrtcStatus = document.getElementById('webrtc-status');
-        
-        const btnStartShare = document.getElementById('btn-start-share');
-        const btnStopShare = document.getElementById('btn-stop-share');
         
         const remoteVideo = document.getElementById('remote-video');
         const localVideo = document.getElementById('local-video');
@@ -252,7 +241,6 @@
             div.innerHTML = `<span class="text-gray-600">[${time}]</span> <span class="font-bold">${prefix[type]}</span> ${message}`;
             logsContainer.appendChild(div);
             logsContainer.scrollTop = logsContainer.scrollHeight;
-            console.log(`${prefix[type]} ${message}`);
         }
 
         document.getElementById('btn-clear-logs').addEventListener('click', () => {
@@ -293,16 +281,6 @@
             }
         }
 
-        function setShareButtonState(enabled) {
-            if (enabled) {
-                btnStartShare.disabled = false;
-                btnStartShare.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded transition flex items-center justify-center gap-2";
-            } else {
-                btnStartShare.disabled = true;
-                btnStartShare.className = "w-full bg-gray-600 text-gray-300 font-medium py-3 px-4 rounded transition cursor-not-allowed opacity-50 flex items-center justify-center gap-2";
-            }
-        }
-
         const webrtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -320,33 +298,42 @@
             ]
         };
 
-        // NOVO: Cria um vídeo em branco (2x2px) para manter a conexão ativa
-        function createDummyTrack() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 2;
-            canvas.height = 2;
-            const ctx = canvas.getContext('2d');
-            // Mantém a trilha enviando quadros (impede o WebRTC de congelar)
-            setInterval(() => {
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(0, 0, 2, 2);
-            }, 1000);
-            return canvas.captureStream(1).getVideoTracks()[0];
-        }
+        // Solicita a captura de mídia ANTES de criar a conexão
+        async function setupLocalMedia() {
+            const mode = mediaModeSelect.value;
+            
+            if (mode === 'share') {
+                try {
+                    logDebug("Solicitando permissão para capturar tela...", "info");
+                    localStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 } },
+                        audio: false // Para compartilhar áudio, troque para true (pode requerer configs extras do OS)
+                    });
+                    
+                    // Exibe no quadro pequeno
+                    localVideo.srcObject = localStream;
+                    localVideo.classList.remove('hidden');
+                    logDebug("Tela capturada com sucesso.", "success");
 
-        // NOVO: Canal de texto oculto para sincronizar a interface
-        function setupDataChannel(channel) {
-            controlChannel = channel;
-            controlChannel.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.action === 'start') {
-                    videoOverlay.classList.add('hidden');
-                    logDebug("O amigo começou a compartilhar a tela.", "info");
-                } else if (data.action === 'stop') {
-                    videoOverlay.classList.remove('hidden');
-                    logDebug("O amigo parou de compartilhar.", "info");
+                    // Trata o cancelamento posterior via barra do navegador
+                    localStream.getVideoTracks()[0].onended = () => {
+                        logDebug("Transmissão interrompida pelo navegador.", "info");
+                        localVideo.classList.add('hidden');
+                        showAlert("Aviso", "Você parou de compartilhar a tela. Para reiniciar, você e seu amigo precisarão recarregar a página e gerar novos códigos.");
+                    };
+                    
+                    return true;
+                } catch (err) {
+                    logDebug(`Permissão negada ou tela não selecionada: ${err.message}`, "error");
+                    showAlert("Erro", "Para usar o modo 'Compartilhar', você precisa permitir a captura de tela. Tente novamente ou mude para 'Apenas Assistir'.");
+                    return false; // Indica falha
                 }
-            };
+            } else {
+                logDebug("Modo 'Apenas Assistir' selecionado. Nenhuma mídia local necessária.", "info");
+                localStream = null;
+                localVideo.classList.add('hidden');
+                return true;
+            }
         }
 
         function finalizeIceGathering() {
@@ -378,65 +365,73 @@
             peerConnection = new RTCPeerConnection(webrtcConfig);
             iceGatheringFinalized = false;
 
-            // NOVO: Configurar canal de dados bidirecional
-            if (role === 'host') {
-                setupDataChannel(peerConnection.createDataChannel('control'));
+            // Se o usuário capturou a tela, injeta ela DIRETO na conexão raiz
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                logDebug("Trilha de vídeo local adicionada ao sinal.", "webrtc");
+            } else {
+                // Se ele quer apenas assistir, criamos um receptor para permitir que o vídeo do outro chegue
+                peerConnection.addTransceiver('video', { direction: 'recvonly' });
+                logDebug("Configurado como receptor (Apenas Assistir).", "webrtc");
             }
-            peerConnection.ondatachannel = (event) => {
-                setupDataChannel(event.channel);
-            };
 
-            // MODIFICADO: Injeta a trilha falsa desde o início
-            const dummyTrack = createDummyTrack();
-            peerConnection.addTransceiver(dummyTrack, { direction: 'sendrecv' });
-
-            // Listen for remote stream
+            // Ouve as trilhas recebidas do amigo
             peerConnection.ontrack = (event) => {
-                logDebug(`Sinal de mídia recebido: ${event.track.kind}`, "success");
+                logDebug(`Mídia do amigo recebida!`, "success");
                 
                 if (!remoteVideo.srcObject) {
-                    remoteVideo.srcObject = new MediaStream([event.track]);
+                    remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
                 }
                 
-                // Removemos os detectores de 'mute' daqui, o canal de dados cuida do aviso!
+                videoOverlay.classList.add('hidden');
+
+                // Lida com o amigo parando a transmissão
+                event.track.onended = () => {
+                     videoOverlay.classList.remove('hidden');
+                     videoOverlayText.innerText = "A transmissão do amigo foi encerrada.";
+                };
             };
 
-            // Connection State Logs
+            // Logs e Status da Conexão
             peerConnection.onconnectionstatechange = () => {
-                logDebug(`Estado da Conexão P2P: ${peerConnection.connectionState}`, "webrtc");
+                logDebug(`Estado P2P: ${peerConnection.connectionState}`, "webrtc");
                 webrtcStatus.innerText = peerConnection.connectionState;
                 
                 if (peerConnection.connectionState === 'connected') {
                     webrtcStatus.className = "font-mono text-green-500 font-bold";
-                    setShareButtonState(true);
                     updateRoomStatusUI(true, true);
-                    logDebug("Conexão P2P estabelecida! Criptografia E2EE ativa.", "success");
+                    
+                    // Se conectou e estou apenas assistindo, escondo a tela de "Conecte-se..." caso o amigo não mande video
+                    if(mediaModeSelect.value === 'watch') {
+                         videoOverlayText.innerText = "Conectado. Aguardando o vídeo do amigo...";
+                    } else {
+                         videoOverlay.classList.add('hidden');
+                    }
+
+                    logDebug("Conexão estabelecida! Tudo operando.", "success");
                 } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                     webrtcStatus.className = "font-mono text-red-500 font-bold";
-                    setShareButtonState(false);
                     videoOverlay.classList.remove('hidden');
-                    videoOverlayText.innerText = "Conexão perdida com o amigo.";
-                    stopScreenSharing();
-                    showAlert("Erro", "A conexão foi perdida.");
+                    videoOverlayText.innerText = "Conexão P2P perdida.";
+                    showAlert("Erro", "A conexão com o seu amigo foi perdida.");
                 }
             };
 
-            // Lógica inteligente para o ICE Gathering
+            // Negociação de Rotas (ICE)
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    // Recebeu um candidato. Reinicia o timer de tolerância.
                     clearTimeout(iceTimeoutTimer);
                     iceTimeoutTimer = setTimeout(() => {
                         if (peerConnection.iceGatheringState !== 'complete') {
-                            logDebug("Forçando conclusão de ICE por timeout...", "webrtc");
                             finalizeIceGathering();
                         }
-                    }, 5000); // Aumentado para 5 segundos para garantir as rotas de TURN (Relay)
+                    }, 4000); // Aguarda 4s após o último candidato para finalizar
                 }
             };
 
             peerConnection.onicegatheringstatechange = () => {
-                logDebug(`Rotas P2P (ICE Gathering): ${peerConnection.iceGatheringState}`, "webrtc");
                 if (peerConnection.iceGatheringState === 'complete') {
                     finalizeIceGathering();
                 }
@@ -447,9 +442,20 @@
         btnGenerateOffer.addEventListener('click', async () => {
             role = 'host';
             btnGenerateOffer.disabled = true;
+            btnGenerateOffer.innerText = "Preparando tela...";
+            
+            // Passo 1: Pega a tela se necessário
+            const mediaOk = await setupLocalMedia();
+            if (!mediaOk) {
+                btnGenerateOffer.disabled = false;
+                btnGenerateOffer.innerText = "Passo 1: Iniciar e Gerar Convite";
+                return;
+            }
+
             btnGenerateOffer.innerText = "Mapeando Rotas (Aguarde)...";
             logDebug("Criando Oferta P2P...", "webrtc");
 
+            // Passo 2: Cria conexão COM a tela inserida
             await createPeerConnection();
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
@@ -465,10 +471,21 @@
 
             role = 'guest';
             btnGenerateAnswer.disabled = true;
+            btnGenerateAnswer.innerText = "Preparando tela...";
+            
+            // Passo 1: Pega a tela se necessário
+            const mediaOk = await setupLocalMedia();
+            if (!mediaOk) {
+                btnGenerateAnswer.disabled = false;
+                btnGenerateAnswer.innerText = "Passo 2: Iniciar e Gerar Resposta";
+                return;
+            }
+
             btnGenerateAnswer.innerText = "Mapeando Rotas (Aguarde)...";
             logDebug("Lendo convite e gerando resposta...", "webrtc");
 
             try {
+                // Passo 2: Processa o convite COM a tela local inserida
                 const offerDesc = JSON.parse(atob(offerCode));
                 await createPeerConnection();
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(offerDesc));
@@ -479,7 +496,7 @@
                 logDebug(`Código de convite inválido: ${e.message}`, "error");
                 showAlert("Erro", "O código do convite é inválido ou está corrompido.");
                 btnGenerateAnswer.disabled = false;
-                btnGenerateAnswer.innerText = "Passo 2: Gerar Resposta";
+                btnGenerateAnswer.innerText = "Passo 2: Iniciar e Gerar Resposta";
             }
         });
 
@@ -495,98 +512,12 @@
             try {
                 const answerDesc = JSON.parse(atob(answerCode));
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(answerDesc));
-                logDebug("Sinalização concluída. Estabelecendo conexão física...", "info");
+                logDebug("Sinalização concluída. Iniciando tráfego de mídia...", "info");
             } catch (e) {
                 logDebug(`Código de resposta inválido: ${e.message}`, "error");
                 showAlert("Erro", "O código de resposta é inválido ou está corrompido.");
             }
         });
-
-        // --- Start/Stop Screen Sharing ---
-        btnStartShare.addEventListener('click', async () => {
-            if (!peerConnection || peerConnection.connectionState !== 'connected') {
-                showAlert("Atenção", "Você precisa estar conectado a alguém antes de compartilhar.");
-                return;
-            }
-
-            try {
-                logDebug("Solicitando captura de tela...", "info");
-                localStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 } },
-                    audio: false // Apenas tela para focar em P2P
-                });
-
-                const videoTrack = localStream.getVideoTracks()[0];
-                logDebug("Tela capturada. Injetando no canal WebRTC...", "webrtc");
-
-                // Encontra o Sender de vídeo já pré-negociado
-                const sender = peerConnection.getSenders().find(s => 
-                    s.track === null || (s.track && s.track.kind === 'video')
-                );
-                
-                if (sender) {
-                    await sender.replaceTrack(videoTrack);
-                    logDebug("Vídeo da tela transmitindo para o amigo!", "success");
-                    
-                    // NOVO: Avisa o outro lado para esconder a mensagem "Aguardando..."
-                    if (controlChannel && controlChannel.readyState === 'open') {
-                        controlChannel.send(JSON.stringify({action: 'start'}));
-                    }
-                    
-                    // Mostra minha tela no PiP (Canto inferior direito)
-                    localVideo.srcObject = localStream;
-                    localVideo.classList.remove('hidden');
-
-                    btnStartShare.classList.add('hidden');
-                    btnStopShare.classList.remove('hidden');
-
-                    // Se o usuário clicar em "Parar de Compartilhar" pela interface do próprio navegador
-                    videoTrack.onended = () => {
-                        logDebug("Compartilhamento interrompido pelo navegador.", "info");
-                        stopScreenSharing();
-                    };
-                } else {
-                    logDebug("Canal de vídeo não encontrado na conexão.", "error");
-                }
-
-            } catch (err) {
-                logDebug(`Permissão negada ou cancelada: ${err.message}`, "error");
-            }
-        });
-
-        function stopScreenSharing() {
-            logDebug("Encerrando captura da tela local...", "info");
-            
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-
-            // Remove o vídeo do sender (Substitui pela trilha falsa novamente)
-            if (peerConnection) {
-                const sender = peerConnection.getSenders().find(s => 
-                    s.track && s.track.kind === 'video'
-                );
-                if (sender) {
-                    sender.replaceTrack(createDummyTrack()).catch(e => logDebug("Erro ao remover trilha local.", "error"));
-                    logDebug("Transmissão local pausada.", "webrtc");
-                    
-                    // NOVO: Avisa o outro lado para voltar a exibir o overlay
-                    if (controlChannel && controlChannel.readyState === 'open') {
-                        controlChannel.send(JSON.stringify({action: 'stop'}));
-                    }
-                }
-            }
-
-            // Oculta o PiP local
-            localVideo.srcObject = null;
-            localVideo.classList.add('hidden');
-
-            btnStartShare.classList.remove('hidden');
-            btnStopShare.classList.add('hidden');
-        }
-
-        btnStopShare.addEventListener('click', stopScreenSharing);
 
         // Warning when closing page
         window.addEventListener('beforeunload', () => {
