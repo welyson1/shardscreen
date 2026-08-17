@@ -278,24 +278,33 @@
             // Listen for remote tracks (when the other person shares their screen)
             peerConnection.ontrack = (event) => {
                 console.log("Received track", event);
-                // Só exibe se houver um stream de vídeo real chegando (ignora o track vazio inicial)
+                
                 if (event.track.kind === 'video') {
-                    remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
+                    // Define a fonte do vídeo e não a remove mais, apenas escondemos com CSS
+                    if (!remoteVideo.srcObject) {
+                        remoteVideo.srcObject = new MediaStream([event.track]);
+                    }
                     
-                    // Verifica se o vídeo está realmente tocando (o track não é apenas o dummy inicial)
-                    event.track.onunmute = () => {
-                        waitingMessage.style.display = 'none';
+                    // Gerencia quando o vídeo chega ou é pausado pelo remetente
+                    const handleTrackState = () => {
+                        if (event.track.muted) {
+                            waitingMessage.style.display = 'flex';
+                        } else {
+                            waitingMessage.style.display = 'none';
+                            // Força o play caso o navegador tenha bloqueado autoplay
+                            remoteVideo.play().catch(e => console.log("Aguardando interação para tocar o vídeo", e));
+                        }
                     };
                     
-                    event.track.onmute = () => {
-                        remoteVideo.srcObject = null;
-                        waitingMessage.style.display = 'flex';
-                    };
+                    event.track.onunmute = handleTrackState;
+                    event.track.onmute = handleTrackState;
+                    
+                    // Checagem inicial
+                    handleTrackState();
                 }
 
                 // Handle when the remote stream stops
                 event.track.onended = () => {
-                    remoteVideo.srcObject = null;
                     waitingMessage.style.display = 'flex';
                     showAlert('Compartilhamento de tela remoto encerrado.', 'info');
                 };
@@ -412,14 +421,13 @@
 
                 const videoTrack = localStream.getVideoTracks()[0];
 
-                // Ao invés de addTrack (que exigiria copiar/colar códigos novamente), 
-                // nós procuramos o "tubo" de vídeo vazio que criamos no início e injetamos o vídeo lá.
-                const sender = peerConnection.getSenders().find(s => s.track === null || s.track?.kind === 'video');
+                // Busca o transceiver de vídeo que configuramos na inicialização
+                const transceiver = peerConnection.getTransceivers().find(t => t.receiver.track.kind === 'video');
                 
-                if (sender) {
-                    await sender.replaceTrack(videoTrack);
+                if (transceiver && transceiver.sender) {
+                    await transceiver.sender.replaceTrack(videoTrack);
                 } else {
-                    // Fallback (não deve acontecer devido ao addTransceiver)
+                    // Fallback
                     peerConnection.addTrack(videoTrack, localStream);
                 }
 
@@ -452,11 +460,11 @@
                     track.stop(); // Stop the camera/screen
                 });
                 
-                // Substitui o track no WebRTC por "nulo" para parar de enviar, mas mantém a conexão viva
+                // Substitui o track no WebRTC por "nulo" usando o Transceiver
                 if (peerConnection) {
-                     const sender = peerConnection.getSenders().find(s => s.track !== null && s.track?.kind === 'video');
-                     if (sender) {
-                         sender.replaceTrack(null);
+                     const transceiver = peerConnection.getTransceivers().find(t => t.receiver.track.kind === 'video');
+                     if (transceiver && transceiver.sender) {
+                         transceiver.sender.replaceTrack(null);
                      }
                 }
                 localStream = null;
