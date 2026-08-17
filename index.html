@@ -183,6 +183,7 @@
         let localStream = null;
         let iceGatheringFinalized = false;
         let iceTimeoutTimer = null;
+        let controlChannel = null; // NOVO: Canal de controle de estado
 
         // UI Elements
         const tabHost = document.getElementById('tab-host');
@@ -319,6 +320,35 @@
             ]
         };
 
+        // NOVO: Cria um vídeo em branco (2x2px) para manter a conexão ativa
+        function createDummyTrack() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2;
+            canvas.height = 2;
+            const ctx = canvas.getContext('2d');
+            // Mantém a trilha enviando quadros (impede o WebRTC de congelar)
+            setInterval(() => {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, 2, 2);
+            }, 1000);
+            return canvas.captureStream(1).getVideoTracks()[0];
+        }
+
+        // NOVO: Canal de texto oculto para sincronizar a interface
+        function setupDataChannel(channel) {
+            controlChannel = channel;
+            controlChannel.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.action === 'start') {
+                    videoOverlay.classList.add('hidden');
+                    logDebug("O amigo começou a compartilhar a tela.", "info");
+                } else if (data.action === 'stop') {
+                    videoOverlay.classList.remove('hidden');
+                    logDebug("O amigo parou de compartilhar.", "info");
+                }
+            };
+        }
+
         function finalizeIceGathering() {
             if (iceGatheringFinalized) return;
             iceGatheringFinalized = true;
@@ -348,9 +378,17 @@
             peerConnection = new RTCPeerConnection(webrtcConfig);
             iceGatheringFinalized = false;
 
-            // Transceiver bidirecional de vídeo para suportar compartilhamento simultâneo
-            // Ele cria o canal vazio desde o começo, não precisando renegociar mais tarde!
-            peerConnection.addTransceiver('video', { direction: 'sendrecv' });
+            // NOVO: Configurar canal de dados bidirecional
+            if (role === 'host') {
+                setupDataChannel(peerConnection.createDataChannel('control'));
+            }
+            peerConnection.ondatachannel = (event) => {
+                setupDataChannel(event.channel);
+            };
+
+            // MODIFICADO: Injeta a trilha falsa desde o início
+            const dummyTrack = createDummyTrack();
+            peerConnection.addTransceiver(dummyTrack, { direction: 'sendrecv' });
 
             // Listen for remote stream
             peerConnection.ontrack = (event) => {
@@ -359,25 +397,8 @@
                 if (!remoteVideo.srcObject) {
                     remoteVideo.srcObject = new MediaStream([event.track]);
                 }
-
-                // Verifica se a trilha veio "mutada" (significa que o outro lado ainda não deu replaceTrack no vídeo)
-                if (event.track.muted) {
-                    videoOverlay.classList.remove('hidden');
-                } else {
-                    videoOverlay.classList.add('hidden');
-                }
-
-                // Quando o amigo começa a compartilhar a tela, ele injeta a track e dispara unmute
-                event.track.onunmute = () => {
-                    logDebug("Tela do amigo recebida (Unmuted).", "info");
-                    videoOverlay.classList.add('hidden');
-                };
-
-                // Quando o amigo para o compartilhamento, ele define a track como null e dispara mute
-                event.track.onmute = () => {
-                    logDebug("O amigo parou de compartilhar a tela (Muted).", "info");
-                    videoOverlay.classList.remove('hidden');
-                };
+                
+                // Removemos os detectores de 'mute' daqui, o canal de dados cuida do aviso!
             };
 
             // Connection State Logs
@@ -403,15 +424,14 @@
             // Lógica inteligente para o ICE Gathering
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    // Recebeu um candidato. Reinicia o timer de tolerância (3 segundos).
-                    // Se não receber novos candidatos após 3s, ele força a conclusão.
+                    // Recebeu um candidato. Reinicia o timer de tolerância.
                     clearTimeout(iceTimeoutTimer);
                     iceTimeoutTimer = setTimeout(() => {
                         if (peerConnection.iceGatheringState !== 'complete') {
                             logDebug("Forçando conclusão de ICE por timeout...", "webrtc");
                             finalizeIceGathering();
                         }
-                    }, 3000);
+                    }, 5000); // Aumentado para 5 segundos para garantir as rotas de TURN (Relay)
                 }
             };
 
@@ -508,6 +528,11 @@
                     await sender.replaceTrack(videoTrack);
                     logDebug("Vídeo da tela transmitindo para o amigo!", "success");
                     
+                    // NOVO: Avisa o outro lado para esconder a mensagem "Aguardando..."
+                    if (controlChannel && controlChannel.readyState === 'open') {
+                        controlChannel.send(JSON.stringify({action: 'start'}));
+                    }
+                    
                     // Mostra minha tela no PiP (Canto inferior direito)
                     localVideo.srcObject = localStream;
                     localVideo.classList.remove('hidden');
@@ -537,14 +562,19 @@
                 localStream = null;
             }
 
-            // Remove o vídeo do sender (faz com que o vídeo do outro lado dispare onmute)
+            // Remove o vídeo do sender (Substitui pela trilha falsa novamente)
             if (peerConnection) {
                 const sender = peerConnection.getSenders().find(s => 
                     s.track && s.track.kind === 'video'
                 );
                 if (sender) {
-                    sender.replaceTrack(null).catch(e => logDebug("Erro ao remover trilha local.", "error"));
+                    sender.replaceTrack(createDummyTrack()).catch(e => logDebug("Erro ao remover trilha local.", "error"));
                     logDebug("Transmissão local pausada.", "webrtc");
+                    
+                    // NOVO: Avisa o outro lado para voltar a exibir o overlay
+                    if (controlChannel && controlChannel.readyState === 'open') {
+                        controlChannel.send(JSON.stringify({action: 'stop'}));
+                    }
                 }
             }
 
