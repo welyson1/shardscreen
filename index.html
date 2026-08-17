@@ -185,7 +185,18 @@
         const servers = {
             iceServers: [
                 {
-                    urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] // Public STUN servers to help establish connection
+                    urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] // STUN para NATs abertos
+                },
+                {
+                    // Servidor TURN (Relay) gratuito para NATs restritos (redes móveis, firewalls corporativos)
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
                 }
             ]
         };
@@ -215,6 +226,11 @@
 
         function initPeerConnection() {
             peerConnection = new RTCPeerConnection(servers);
+
+            // TRUQUE PARA APP MANUAL: Prepara canais de vídeo (Transceivers) de envio e recebimento 
+            // ANTES de gerar o convite. Assim, quando clicarmos em "Compartilhar Tela" depois,
+            // não precisaremos gerar e colar novos convites para o vídeo funcionar.
+            peerConnection.addTransceiver('video', { direction: 'sendrecv' });
 
             // Listen for ICE candidates (network routing info) and update the text areas
             peerConnection.onicecandidate = (event) => {
@@ -262,16 +278,26 @@
             // Listen for remote tracks (when the other person shares their screen)
             peerConnection.ontrack = (event) => {
                 console.log("Received track", event);
-                remoteVideo.srcObject = event.streams[0];
-                waitingMessage.style.display = 'none';
-                
+                // Só exibe se houver um stream de vídeo real chegando (ignora o track vazio inicial)
+                if (event.track.kind === 'video') {
+                    remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
+                    
+                    // Verifica se o vídeo está realmente tocando (o track não é apenas o dummy inicial)
+                    event.track.onunmute = () => {
+                        waitingMessage.style.display = 'none';
+                    };
+                    
+                    event.track.onmute = () => {
+                        remoteVideo.srcObject = null;
+                        waitingMessage.style.display = 'flex';
+                    };
+                }
+
                 // Handle when the remote stream stops
-                event.streams[0].onremovetrack = () => {
-                    if (event.streams[0].getTracks().length === 0) {
-                         remoteVideo.srcObject = null;
-                         waitingMessage.style.display = 'flex';
-                         showAlert('Compartilhamento de tela remoto encerrado.', 'info');
-                    }
+                event.track.onended = () => {
+                    remoteVideo.srcObject = null;
+                    waitingMessage.style.display = 'flex';
+                    showAlert('Compartilhamento de tela remoto encerrado.', 'info');
                 };
             };
         }
@@ -384,40 +410,27 @@
                     audio: false // Screen audio is complex across browsers, keeping it simple
                 });
 
-                // Add the tracks to the peer connection
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                    
-                    // Listen for the user stopping sharing via the browser UI (e.g., "Stop Sharing" button in Chrome)
-                    track.onended = () => {
-                        stopScreenSharing();
-                    };
-                });
+                const videoTrack = localStream.getVideoTracks()[0];
 
-                // We need to renegotiate the connection to add the new stream
-                // This is a simplified renegotiation that happens automatically in many modern browsers,
-                // but strictly speaking, adding a track requires a new offer/answer exchange if not supported perfectly.
-                // For a copy-paste signaling app, adding tracks AFTER connection can be tricky without automated signaling.
-                // However, many browsers handle `addTrack` smoothly if done correctly. 
-                // A better approach for this simple app is to create a new offer if needed, 
-                // but let's see if automatic renegotiation handles it first (often does on local networks/modern browsers).
+                // Ao invés de addTrack (que exigiria copiar/colar códigos novamente), 
+                // nós procuramos o "tubo" de vídeo vazio que criamos no início e injetamos o vídeo lá.
+                const sender = peerConnection.getSenders().find(s => s.track === null || s.track?.kind === 'video');
                 
-                // Important: In a pure manual signaling app, if `onnegotiationneeded` fires, 
-                // the users would have to copy-paste AGAIN. 
-                // To avoid this complexity for the user, we try to add it.
-                peerConnection.onnegotiationneeded = async () => {
-                    console.log("Renegotiation needed... This manual app doesn't support easy dynamic renegotiation yet.");
-                    // For a robust app, we'd need to automatically send the new offer through a signaling server.
-                    // Since we are manual, renegotiation (adding streams late) might require pasting new codes.
-                    // To keep it simple, we'll try to just add the track. If it fails, we inform the user.
+                if (sender) {
+                    await sender.replaceTrack(videoTrack);
+                } else {
+                    // Fallback (não deve acontecer devido ao addTransceiver)
+                    peerConnection.addTrack(videoTrack, localStream);
                 }
+
+                // Listen for the user stopping sharing via the browser UI (e.g., "Stop Sharing" button in Chrome)
+                videoTrack.onended = () => {
+                    stopScreenSharing();
+                };
 
                 startShareBtn.classList.add('hidden');
                 stopShareBtn.classList.remove('hidden');
                 showAlert('Compartilhamento de tela iniciado!', 'success');
-
-                // Show local preview (optional, currently we just show remote)
-                // If you want to see what you share, you could add another video element.
 
             } catch (error) {
                 console.error("Error starting screen share:", error);
@@ -437,15 +450,15 @@
             if (localStream) {
                 localStream.getTracks().forEach(track => {
                     track.stop(); // Stop the camera/screen
-                    // Remove track from peer connection if it exists
-                    if (peerConnection) {
-                         const senders = peerConnection.getSenders();
-                         const sender = senders.find(s => s.track === track);
-                         if (sender) {
-                             peerConnection.removeTrack(sender);
-                         }
-                    }
                 });
+                
+                // Substitui o track no WebRTC por "nulo" para parar de enviar, mas mantém a conexão viva
+                if (peerConnection) {
+                     const sender = peerConnection.getSenders().find(s => s.track !== null && s.track?.kind === 'video');
+                     if (sender) {
+                         sender.replaceTrack(null);
+                     }
+                }
                 localStream = null;
             }
             startShareBtn.classList.remove('hidden');
