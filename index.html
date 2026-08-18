@@ -229,7 +229,7 @@
         </div>
     </div>
 
-    <!-- Hidden Logs for debugging purposes only if needed (removed from UI for clean UX) -->
+    <!-- Hidden Logs for debugging purposes only if needed -->
     <div id="logs-container" class="hidden"></div>
 
     <script>
@@ -270,7 +270,7 @@
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
 
-        // --- Configurações WebRTC ---
+        // --- Configurações WebRTC (Padrão Funcional) ---
         const webrtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -290,7 +290,6 @@
 
         // --- Funções de Interface ---
         function switchScreen(target) {
-            // Se estiver saindo de uma tela ativa para a home, reseta tudo.
             if (target === 'home') {
                 endSession();
             }
@@ -302,6 +301,7 @@
             if (target === 'home') {
                 screenHome.classList.remove('hidden');
                 updateStatusUI('neutral', 'Aguardando Ação');
+                role = null;
             } else if (target === 'host') {
                 screenHost.classList.remove('hidden');
                 updateStatusUI('waiting', 'Preparando Transmissão');
@@ -364,6 +364,7 @@
                 btnGenerateAnswer.innerHTML = "Resposta Gerada (Copie abaixo)";
                 btnGenerateAnswer.classList.replace('bg-purple-600', 'bg-green-600');
                 updateStatusUI('waiting', 'Pronto para receber');
+                guestVideoOverlayText.innerText = "Resposta gerada! Envie ao anfitrião e aguarde a conexão...";
             }
         }
 
@@ -373,7 +374,7 @@
             iceGatheringFinalized = false;
 
             if (isHost && localStream) {
-                // Adiciona as faixas de vídeo locais
+                // Adiciona as faixas de vídeo locais (Anfitrião)
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                 });
@@ -382,7 +383,7 @@
                 peerConnection.addTransceiver('video', { direction: 'recvonly' });
             }
 
-            // Ouve as faixas recebidas
+            // Ouve as faixas recebidas (Executado no Convidado)
             peerConnection.ontrack = (event) => {
                 if (!remoteVideo.srcObject) {
                     remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
@@ -404,11 +405,16 @@
                         hostActiveContainer.classList.remove('hidden');
                         updateStatusUI('connected', 'Transmissão Ativa');
                     } else {
-                        // Convidado: Oculta caixas e exibe vídeo APENAS QUANDO CONECTADO
+                        // Convidado: Oculta caixas e exibe vídeo APENAS QUANDO A CONEXÃO ESTIVER 100% PRONTA
                         guestVideoOverlay.classList.add('hidden');
                         guestSetupContainer.classList.add('hidden'); 
                         btnFullscreen.classList.remove('hidden');    
                         updateStatusUI('connected', 'Assistindo Tela');
+                        
+                        // Força a reprodução do vídeo para contornar bloqueios de autoplay
+                        if (remoteVideo.paused) {
+                            remoteVideo.play().catch(e => console.error("Falha no Autoplay do Vídeo:", e));
+                        }
                     }
                 } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                     showAlert("Erro", "A conexão P2P foi perdida.");
@@ -417,21 +423,23 @@
                 }
             };
 
-            // Coleta de candidatos ICE (Rotas)
+            // Coleta de candidatos ICE (Rotas de Rede)
+            // Lógica funcional de tempo de espera (4000ms) idêntica ao código que funcionou para você
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
                     clearTimeout(iceTimeoutTimer);
                     iceTimeoutTimer = setTimeout(() => {
-                        if (peerConnection.iceGatheringState !== 'complete') finalizeIceGathering();
-                    }, 3000); // 3 segundos de tolerância para achar todas as rotas
-                } else {
-                    // Finaliza a geração automaticamente se o navegador indicar fim (null)
-                    finalizeIceGathering();
+                        if (peerConnection.iceGatheringState !== 'complete') {
+                            finalizeIceGathering();
+                        }
+                    }, 4000); 
                 }
             };
 
             peerConnection.onicegatheringstatechange = () => {
-                if (peerConnection.iceGatheringState === 'complete') finalizeIceGathering();
+                if (peerConnection.iceGatheringState === 'complete') {
+                    finalizeIceGathering();
+                }
             };
         }
 
@@ -495,6 +503,7 @@
 
             btnGenerateAnswer.disabled = true;
             btnGenerateAnswer.innerText = "Processando...";
+            guestVideoOverlayText.innerText = "Gerando resposta...";
 
             try {
                 const offerDesc = JSON.parse(atob(offerCode));
@@ -503,12 +512,11 @@
                 
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
-                
-                guestVideoOverlayText.innerText = "Conectando... Envie sua resposta ao anfitrião.";
             } catch (e) {
                 showAlert("Erro", "O código do convite é inválido ou está corrompido.");
                 btnGenerateAnswer.disabled = false;
                 btnGenerateAnswer.innerText = "2. Processar e Gerar Resposta";
+                guestVideoOverlayText.innerText = "Conclua os passos acima para ver a tela.";
             }
         });
 
@@ -562,8 +570,6 @@
             btnGenerateAnswer.classList.replace('bg-green-600', 'bg-purple-600');
 
             updateStatusUI('neutral', 'Sessão Encerrada');
-            if(role) switchScreen('home');
-            role = null;
         }
 
         // Segurança ao fechar aba
