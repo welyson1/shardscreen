@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Screen Share - Mesh Room</title>
+    <title>P2P Screen Share - Mesh & Mobile</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS Library -->
@@ -17,14 +17,15 @@
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Grade Dinâmica de Vídeos */
+        /* Grade Dinâmica de Vídeos (Flexbox para Modo Foco) */
         #video-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 1rem;
             width: 100%;
             height: 100%;
             align-content: start;
+            justify-content: center;
         }
 
         .video-card {
@@ -32,10 +33,12 @@
             background-color: #000;
             border-radius: 0.75rem;
             overflow: hidden;
-            aspect-ratio: 16 / 9;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
             border: 1px solid #374151;
             transition: all 0.3s ease;
+            flex: 1 1 300px;
+            max-width: 100%;
+            height: 300px;
         }
 
         .video-card video {
@@ -58,32 +61,55 @@
             z-index: 10;
         }
 
-        /* Tela Cheia */
-        .btn-fullscreen {
+        /* Botões sobrepostos no vídeo */
+        .btn-overlay {
             position: absolute;
             top: 0.5rem;
-            right: 0.5rem;
             background: rgba(0, 0, 0, 0.6);
             color: white;
             padding: 0.4rem;
-            border-radius: 0.25rem;
+            border-radius: 0.375rem;
             cursor: pointer;
             z-index: 10;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s, background 0.2s;
+            backdrop-filter: blur(4px);
         }
 
-        .video-card:hover .btn-fullscreen {
-            opacity: 1;
+        .video-card:hover .btn-overlay { opacity: 1; }
+        .btn-overlay:hover { background: rgba(59, 130, 246, 0.8); }
+
+        .btn-focus { left: 0.5rem; }
+        .btn-fullscreen { right: 0.5rem; }
+
+        /* --- MODO FOCO (ESTILO DISCORD) --- */
+        #video-grid.has-focus .video-card {
+            flex: 0 0 160px; /* Miniaturas */
+            height: 120px;
+            order: 2;
         }
 
-        :fullscreen .video-card {
-            width: 100vw;
-            height: 100vh;
-            border-radius: 0;
-            border: none;
-            aspect-ratio: auto;
+        #video-grid.has-focus .video-card.focused {
+            flex: 1 1 100%; /* Vídeo principal expandido */
+            height: 65vh;
+            order: 1;
+            border-color: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
         }
+
+        /* Ajustes Mobile */
+        @media (max-width: 768px) {
+            .video-card { height: 220px; }
+            #video-grid.has-focus .video-card { flex: 0 0 110px; height: 85px; }
+            #video-grid.has-focus .video-card.focused { height: 45vh; }
+            .btn-overlay { opacity: 1; /* Sempre visível no mobile */ }
+        }
+
+        /* Fullscreen Nativo */
+        :fullscreen .btn-fullscreen-enter { display: none; }
+        :fullscreen .btn-fullscreen-exit { display: block; }
+        .btn-fullscreen-exit { display: none; }
+        :fullscreen .video-card { width: 100vw; height: 100vh; border-radius: 0; border: none; }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
@@ -93,32 +119,32 @@
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="bg-blue-600 p-2 rounded-lg">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold leading-tight">P2P Sala Colaborativa</h1>
-                    <p class="text-xs text-gray-400">Compartilhamento Simultâneo (Mesh)</p>
+                    <h1 class="text-lg font-bold leading-tight">Sala P2P <span class="hidden sm:inline">- Multidispositivos</span></h1>
                 </div>
             </div>
-            <div id="global-status" class="flex items-center gap-2 text-sm font-medium text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700">
+            <div id="global-status" class="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700">
                 <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
-                <span id="status-text">Aguardando Ação</span>
+                <span id="status-text" class="hidden sm:inline">Aguardando Ação</span>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow flex flex-col items-center p-4 h-[calc(100vh-80px)] overflow-hidden">
+    <!-- Main Container agora scrolla naturalmente em vez de travar a altura -->
+    <main class="flex-grow flex flex-col items-center p-4">
         
         <!-- TELA INICIAL (CRIAR / ENTRAR) -->
-        <div id="screen-home" class="fade-in max-w-2xl w-full mx-auto text-center space-y-8 py-12">
+        <div id="screen-home" class="fade-in max-w-2xl w-full mx-auto text-center space-y-8 py-8 sm:py-12">
             <div class="space-y-4">
-                <h2 class="text-4xl font-extrabold tracking-tight">Sala de Reunião P2P</h2>
-                <p class="text-gray-400 text-lg">Crie uma nova sala para convidar pessoas, ou entre em uma sala existente. Todos podem compartilhar a tela simultaneamente.</p>
+                <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Sala de Reunião P2P</h2>
+                <p class="text-gray-400 text-base sm:text-lg">Crie uma nova sala ou entre em uma sala existente. Funciona no PC e no Celular.</p>
             </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
                 <!-- Criar Sala -->
-                <button onclick="createRoom()" class="group relative flex flex-col items-center justify-center p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 hover:border-blue-500 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] text-left hover:-translate-y-1">
+                <button onclick="createRoom()" class="group relative flex flex-col items-center justify-center p-6 sm:p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 hover:border-blue-500 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] text-left hover:-translate-y-1">
                     <div class="bg-blue-500/10 text-blue-500 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     </div>
@@ -127,11 +153,11 @@
                 </button>
 
                 <!-- Entrar na Sala -->
-                <div class="group relative flex flex-col items-center justify-center p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 transition-all text-left">
+                <div class="group relative flex flex-col items-center justify-center p-6 sm:p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 transition-all text-left">
                     <div class="bg-purple-500/10 text-purple-400 p-4 rounded-full mb-4">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">Entrar em Sala Existente</h3>
+                    <h3 class="text-xl font-bold mb-3">Entrar em Sala</h3>
                     <div class="w-full space-y-2">
                         <input type="text" id="join-room-id" class="w-full text-center text-lg tracking-widest font-mono font-bold bg-gray-950 border border-gray-700 rounded-lg p-2 text-purple-400 focus:outline-none focus:border-purple-500 transition placeholder-gray-700 uppercase" placeholder="ABC-123" maxlength="7">
                         <button onclick="joinRoom()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2 rounded-lg transition">Entrar</button>
@@ -141,9 +167,10 @@
         </div>
 
         <!-- TELA DA SALA (GRADE DE VÍDEOS E PAINEL) -->
-        <div id="screen-room" class="hidden fade-in w-full max-w-7xl h-full flex flex-col lg:flex-row gap-6 pb-4">
+        <!-- Ajustado para flex-col no mobile e flex-row no desktop -->
+        <div id="screen-room" class="hidden fade-in w-full max-w-7xl flex flex-col lg:flex-row gap-6 pb-4">
             
-            <!-- Barra Lateral Esquerda -->
+            <!-- Barra Lateral Esquerda (Fica no topo no celular) -->
             <div class="w-full lg:w-80 flex flex-col gap-4 flex-shrink-0">
                 
                 <!-- Info da Sala -->
@@ -157,11 +184,11 @@
                     </div>
                     
                     <!-- Botões Principais -->
-                    <button id="btn-start-share" onclick="startScreenShare()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition flex justify-center items-center gap-2 mb-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                        Compartilhar Tela
+                    <button id="btn-open-share-menu" onclick="openShareMenu()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition flex justify-center items-center gap-2 mb-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Compartilhar
                     </button>
-                    <button id="btn-stop-share" onclick="stopScreenShare()" class="hidden w-full bg-red-600 hover:bg-red-500 text-white font-medium py-3 rounded-lg transition flex justify-center items-center gap-2 mb-2">
+                    <button id="btn-stop-share" onclick="stopMediaShare()" class="hidden w-full bg-red-600 hover:bg-red-500 text-white font-medium py-3 rounded-lg transition flex justify-center items-center gap-2 mb-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
                         Parar Transmissão
                     </button>
@@ -171,53 +198,76 @@
                 </div>
 
                 <!-- Estatísticas de Desempenho -->
-                <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 flex-grow overflow-hidden flex flex-col">
+                <div class="bg-gray-900 rounded-xl p-5 border border-gray-800">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-medium text-gray-300">Painel de Tráfego</h3>
+                        <h3 class="text-sm font-medium text-gray-300">Tráfego</h3>
                         <span class="flex h-2 w-2 relative">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                         </span>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-2 text-xs flex-grow content-start">
+                    <div class="grid grid-cols-2 gap-2 text-xs">
                         <div class="bg-gray-950 p-2 rounded border border-gray-800">
-                            <p class="text-gray-500">Pessoas na Sala</p>
+                            <p class="text-gray-500">Na Sala</p>
                             <p id="stat-peers" class="font-bold text-white text-lg">1</p>
                         </div>
                         <div class="bg-gray-950 p-2 rounded border border-gray-800">
-                            <p class="text-gray-500">Sua RAM (Aba)</p>
-                            <p id="stat-memory" class="font-mono text-gray-300 mt-1">N/A</p>
+                            <p class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Up</p>
+                            <p id="stat-upload" class="font-mono font-bold text-blue-400 text-base">0 kbps</p>
                         </div>
-                        <div class="bg-gray-950 p-2 rounded border border-gray-800 col-span-2">
-                            <p class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Enviando (Upload)</p>
-                            <p id="stat-upload" class="font-mono font-bold text-blue-400 text-lg">0 kbps</p>
-                        </div>
-                        <div class="bg-gray-950 p-2 rounded border border-gray-800 col-span-2">
-                            <p class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Recebendo (Download)</p>
-                            <p id="stat-download" class="font-mono font-bold text-purple-400 text-lg">0 kbps</p>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800 col-span-2 flex justify-between">
+                            <p class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download</p>
+                            <p id="stat-download" class="font-mono font-bold text-purple-400 text-base">0 kbps</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Área Principal: Grade de Vídeos -->
-            <div class="flex-grow bg-gray-900 rounded-xl border border-gray-800 overflow-y-auto p-4 flex items-center justify-center">
+            <!-- Área Principal: Grade de Vídeos (Fica embaixo no celular) -->
+            <div class="flex-grow bg-gray-900/50 rounded-xl border border-gray-800 p-4 min-h-[400px] flex items-center justify-center relative">
                 <!-- Se vazio, mostra aviso -->
                 <div id="empty-room-msg" class="text-center text-gray-500 absolute pointer-events-none flex flex-col items-center">
                     <svg class="w-16 h-16 text-gray-800 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    <p>Nenhuma tela compartilhada ainda.</p>
+                    <p>Nenhuma tela ou câmera compartilhada ainda.</p>
                 </div>
 
-                <!-- O Grid -->
+                <!-- O Grid Flexbox -->
                 <div id="video-grid"></div>
             </div>
 
         </div>
     </main>
 
+    <!-- Modal de Seleção de Mídia (Tela vs Câmera) -->
+    <div id="share-menu-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] hidden">
+        <div class="bg-gray-900 p-6 rounded-2xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4">
+            <h3 class="text-xl font-bold mb-4 text-white text-center">O que deseja compartilhar?</h3>
+            
+            <div class="space-y-3">
+                <button onclick="startMediaShare('screen')" class="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-xl transition text-left flex items-center gap-4">
+                    <div class="bg-blue-800 p-2 rounded-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></div>
+                    <div>
+                        <p class="font-bold text-sm">Tela ou Aba</p>
+                        <p class="text-xs text-blue-200">Ideal para Computador (PC)</p>
+                    </div>
+                </button>
+                
+                <button onclick="startMediaShare('camera')" class="w-full bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-xl transition text-left flex items-center gap-4">
+                    <div class="bg-purple-800 p-2 rounded-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></div>
+                    <div>
+                        <p class="font-bold text-sm">Câmera e Microfone</p>
+                        <p class="text-xs text-purple-200">Perfeito para Celulares</p>
+                    </div>
+                </button>
+            </div>
+
+            <button onclick="closeShareMenu()" class="w-full mt-6 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2 rounded-xl transition">Cancelar</button>
+        </div>
+    </div>
+
     <!-- Modal de Aviso -->
-    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] hidden">
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[110] hidden">
         <div class="bg-gray-900 p-6 rounded-2xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4">
             <h3 id="alert-title" class="text-xl font-bold mb-2 text-white">Aviso</h3>
             <p id="alert-message" class="text-gray-400 mb-6 text-sm"></p>
@@ -226,25 +276,23 @@
     </div>
 
     <script>
-        // --- ESTADO DA APLICAÇÃO (MALHA/MESH) ---
+        // --- ESTADO DA APLICAÇÃO ---
         let myPeer = null; 
         let isRoomHost = false;
         let myRoomId = null;
         let myPeerId = null;
         
-        let dataConnections = {}; // Conexões de Chat/Sinalização P2P { peerId: DataConnection }
-        let myOutgoingCalls = {}; // Conexões de Mídia saindo de mim { peerId: MediaConnection }
-        let incomingCalls = {};   // Conexões de Mídia chegando para mim { peerId: MediaConnection }
+        let dataConnections = {}; 
+        let myOutgoingCalls = {}; 
+        let incomingCalls = {};   
         
         let localStream = null;
         let statsIntervalId = null;
         
-        // Dados de Estatísticas
         let lastBytesSent = 0;
         let lastBytesReceived = 0;
 
-        // Prefixo para garantir compatibilidade
-        const APP_PREFIX = 'P2P-MESH-V1-'; 
+        const APP_PREFIX = 'P2P-MESH-V2-'; 
 
         // --- ELEMENTOS DE UI ---
         const screenHome = document.getElementById('screen-home');
@@ -253,13 +301,14 @@
         const roomIdDisplay = document.getElementById('room-id-display');
         const videoGrid = document.getElementById('video-grid');
         const emptyRoomMsg = document.getElementById('empty-room-msg');
-        const btnStartShare = document.getElementById('btn-start-share');
+        
+        const btnOpenShareMenu = document.getElementById('btn-open-share-menu');
         const btnStopShare = document.getElementById('btn-stop-share');
+        const shareMenuModal = document.getElementById('share-menu-modal');
         
         const statPeers = document.getElementById('stat-peers');
         const statUpload = document.getElementById('stat-upload');
         const statDownload = document.getElementById('stat-download');
-        const statMemory = document.getElementById('stat-memory');
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
 
@@ -286,10 +335,6 @@
             document.getElementById('alert-modal').classList.remove('hidden');
         }
 
-        document.getElementById('btn-close-alert').addEventListener('click', () => {
-            document.getElementById('alert-modal').classList.add('hidden');
-        });
-
         function updateStatusUI(state, text) {
             statusText.innerText = text;
             statusDot.className = 'w-2.5 h-2.5 rounded-full';
@@ -301,30 +346,45 @@
         function copyRoomId() {
             if(!myRoomId) return;
             navigator.clipboard.writeText(myRoomId).then(() => {
-                const el = roomIdDisplay;
-                const originalClass = el.className;
-                el.classList.add('text-green-400');
-                setTimeout(() => { el.className = originalClass; }, 600);
-            });
+                roomIdDisplay.classList.add('text-green-400');
+                setTimeout(() => { roomIdDisplay.classList.remove('text-green-400'); }, 600);
+            }).catch(() => showAlert("Erro", "Copie manualmente."));
         }
 
         function updateUIOnPeersChange() {
-            const count = Object.keys(dataConnections).length + 1; // +1 (Eu mesmo)
+            const count = Object.keys(dataConnections).length + 1;
             statPeers.innerText = count;
         }
 
         function checkGridEmpty() {
-            if (videoGrid.children.length === 0) {
-                emptyRoomMsg.style.display = 'flex';
+            emptyRoomMsg.style.display = videoGrid.children.length === 0 ? 'flex' : 'none';
+        }
+
+        // --- MODO FOCO (EXPANDIR) ---
+        function toggleFocusMode(id) {
+            const card = document.getElementById(`video-wrapper-${id}`);
+            if (!card) return;
+
+            if (card.classList.contains('focused')) {
+                // Remover foco
+                card.classList.remove('focused');
+                videoGrid.classList.remove('has-focus');
             } else {
-                emptyRoomMsg.style.display = 'none';
+                // Aplicar foco a este, remover dos outros
+                document.querySelectorAll('.video-card.focused').forEach(c => c.classList.remove('focused'));
+                card.classList.add('focused');
+                videoGrid.classList.add('has-focus');
+                
+                // Rola suavemente a tela para garantir que o vídeo expandido fique visível (Mobile UX)
+                setTimeout(() => {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
             }
         }
 
         // --- GERENCIAMENTO DE VÍDEO (GRADE) ---
         function addVideoToGrid(id, stream, isLocal = false) {
-            // Se já existe, remove primeiro
-            removeVideoFromGrid(id);
+            removeVideoFromGrid(id); // Previne duplicatas
 
             const card = document.createElement('div');
             card.className = "video-card fade-in";
@@ -334,17 +394,27 @@
             video.srcObject = stream;
             video.autoplay = true;
             video.playsInline = true;
-            if (isLocal) {
-                video.muted = true; // Impede ouvir a própria tela (eco infinito se vazar mic)
-            }
+            if (isLocal) video.muted = true;
 
             const label = document.createElement('div');
             label.className = "video-label";
-            label.innerText = isLocal ? "Sua Tela" : `Tela de ${id.replace(APP_PREFIX, '').substring(0,6)}`;
+            label.innerText = isLocal ? "Você" : `Usuário ${id.replace(APP_PREFIX, '').substring(0,4)}`;
 
+            // Botão Modo Foco (Expandir na Aba)
+            const focusBtn = document.createElement('button');
+            focusBtn.className = "btn-overlay btn-focus";
+            focusBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>`;
+            focusBtn.title = "Expandir (Modo Foco)";
+            focusBtn.onclick = () => toggleFocusMode(id);
+
+            // Botão Tela Cheia (Nativo do S.O.)
             const fsBtn = document.createElement('button');
-            fsBtn.className = "btn-fullscreen";
-            fsBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>`;
+            fsBtn.className = "btn-overlay btn-fullscreen";
+            fsBtn.innerHTML = `
+                <svg class="w-5 h-5 btn-fullscreen-enter" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                <svg class="w-5 h-5 btn-fullscreen-exit" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4m0-4l-5 5m11-5h4v4m0-4l-5 5M4 10h4V6m0 4l-5-5m11 5h4V6m0 4l-5-5"></path></svg>
+            `;
+            fsBtn.title = "Tela Cheia";
             fsBtn.onclick = () => {
                 if (!document.fullscreenElement) {
                     card.requestFullscreen().catch(err => console.error(err));
@@ -355,6 +425,7 @@
 
             card.appendChild(video);
             card.appendChild(label);
+            card.appendChild(focusBtn);
             card.appendChild(fsBtn);
             videoGrid.appendChild(card);
             
@@ -364,6 +435,10 @@
         function removeVideoFromGrid(id) {
             const el = document.getElementById(`video-wrapper-${id}`);
             if (el) {
+                // Se o removido era o focado, desliga o modo foco da grade
+                if(el.classList.contains('focused')) {
+                    videoGrid.classList.remove('has-focus');
+                }
                 el.remove();
             }
             checkGridEmpty();
@@ -394,16 +469,10 @@
                     else reject(err);
                 });
 
-                // Quando alguém me liga (Dados/Sinalização do Mesh)
-                myPeer.on('connection', (conn) => {
-                    setupDataConnection(conn);
-                });
+                myPeer.on('connection', (conn) => setupDataConnection(conn));
 
-                // Quando alguém me liga (Vídeo/Mídia)
                 myPeer.on('call', (call) => {
-                    // Eu apenas assisto, não retorno vídeo nesta chamada
-                    call.answer(); 
-                    
+                    call.answer(); // Atende sempre (como espectador base)
                     incomingCalls[call.peer] = call;
 
                     call.on('stream', (remoteStream) => {
@@ -423,10 +492,9 @@
             });
         }
 
-        // Conecta-se a um novo participante via Chat (Data)
         function connectToPeer(targetPeerId) {
-            if (targetPeerId === myPeerId) return; // Não conecta a mim mesmo
-            if (dataConnections[targetPeerId]) return; // Já conectado
+            if (targetPeerId === myPeerId) return;
+            if (dataConnections[targetPeerId]) return;
 
             const conn = myPeer.connect(targetPeerId);
             setupDataConnection(conn);
@@ -437,13 +505,11 @@
                 dataConnections[conn.peer] = conn;
                 updateUIOnPeersChange();
 
-                // Regra do Mesh: O Anfitrião compartilha a lista com quem acabou de entrar
                 if (isRoomHost) {
                     const peerList = Object.keys(dataConnections);
                     conn.send({ type: 'PEER_LIST', peers: peerList });
                 }
 
-                // Se eu já estiver compartilhando tela, ligo para o novato imediatamente
                 if (localStream) {
                     const call = myPeer.call(conn.peer, localStream);
                     myOutgoingCalls[conn.peer] = call;
@@ -451,11 +517,8 @@
             });
 
             conn.on('data', (data) => {
-                // Ao receber a lista do anfitrião, conecto aos outros da sala (formando a teia)
                 if (data.type === 'PEER_LIST') {
-                    data.peers.forEach(peerId => {
-                        connectToPeer(peerId);
-                    });
+                    data.peers.forEach(peerId => connectToPeer(peerId));
                 }
             });
 
@@ -470,7 +533,7 @@
             });
         }
 
-        // --- AÇÕES DA INTERFACE ---
+        // --- AÇÕES DA SALA E MÍDIA ---
 
         async function createRoom() {
             myRoomId = generateShortId();
@@ -506,12 +569,11 @@
 
             try {
                 updateStatusUI('waiting', 'Entrando na sala...');
-                await startPeerJS(); // ID aleatório para mim
+                await startPeerJS();
                 
                 isRoomHost = false;
                 roomIdDisplay.innerText = myRoomId;
 
-                // Conecta com o anfitrião para entrar na malha
                 connectToPeer(targetHostId);
 
                 screenHome.classList.add('hidden');
@@ -521,78 +583,90 @@
                 statsIntervalId = setInterval(calculateStats, 2000);
                 checkGridEmpty();
             } catch (e) {
-                showAlert("Erro", "Falha ao acessar os servidores.");
+                showAlert("Erro", "Falha ao acessar a sala.");
                 updateStatusUI('neutral', 'Aguardando Ação');
             }
         }
 
-        async function startScreenShare() {
+        // Modal de Escolha (Tela ou Câmera)
+        function openShareMenu() {
+            shareMenuModal.classList.remove('hidden');
+        }
+        function closeShareMenu() {
+            shareMenuModal.classList.add('hidden');
+        }
+
+        async function startMediaShare(type) {
+            closeShareMenu();
+            btnOpenShareMenu.disabled = true;
+            
             try {
-                btnStartShare.disabled = true;
-                
-                // O próprio navegador cuida de perguntar sobre o áudio nativamente
-                localStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always" },
-                    audio: true
+                if (type === 'screen') {
+                    localStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: true // O próprio navegador vai oferecer a caixa de seleção de áudio
+                    });
+                } else if (type === 'camera') {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                }
+
+                localStream.getTracks().forEach(track => {
+                    track.onended = stopMediaShare; // Encerra se o usuário parar via navegador nativo
                 });
 
-                // Monitora se o usuário clicar no botão nativo "Parar compartilhamento" do navegador
-                localStream.getVideoTracks()[0].onended = stopScreenShare;
-
-                // Adiciona na minha própria interface
                 addVideoToGrid('local', localStream, true);
 
-                // Dispara o vídeo para todos conectados atualmente na malha
+                // Envia a mídia para todos conectados na malha P2P
                 Object.keys(dataConnections).forEach(peerId => {
                     const call = myPeer.call(peerId, localStream);
                     myOutgoingCalls[peerId] = call;
                 });
 
-                btnStartShare.classList.add('hidden');
+                btnOpenShareMenu.classList.add('hidden');
                 btnStopShare.classList.remove('hidden');
             } catch (err) {
                 console.error(err);
-                showAlert("Aviso", "Permissão negada ou cancelada.");
+                if (err.name === "NotAllowedError" || err.name === "NotFoundError") {
+                    const msg = type === 'screen' 
+                        ? "Compartilhamento de TELA bloqueado. Seu navegador móvel provavelmente não suporta esse recurso. Tente usar a Câmera."
+                        : "Permissão de Câmera/Microfone negada.";
+                    showAlert("Acesso Negado", msg);
+                } else {
+                    showAlert("Aviso", "A captura foi cancelada ou falhou.");
+                }
             } finally {
-                btnStartShare.disabled = false;
+                btnOpenShareMenu.disabled = false;
             }
         }
 
-        function stopScreenShare() {
-            // BUGFIX ÁUDIO: Para e destrói rigorosamente todas as trilhas (vídeo e áudio) capturadas no hardware
+        function stopMediaShare() {
             if (localStream) {
-                localStream.getTracks().forEach(track => {
-                    track.stop(); // O.S. corta o microfone/áudio do sistema imediatamente
-                });
+                localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
 
-            // Encerra as chamadas WebRTC (Isso notifica os remotos e remove o vídeo deles na hora)
-            Object.values(myOutgoingCalls).forEach(call => {
-                call.close();
-            });
+            Object.values(myOutgoingCalls).forEach(call => call.close());
             myOutgoingCalls = {};
 
             removeVideoFromGrid('local');
 
             btnStopShare.classList.add('hidden');
-            btnStartShare.classList.remove('hidden');
+            btnOpenShareMenu.classList.remove('hidden');
         }
 
         function endSession() {
-            stopScreenShare();
-
+            stopMediaShare();
             if (statsIntervalId) clearInterval(statsIntervalId);
-            
-            if (myPeer) {
-                myPeer.destroy();
-                myPeer = null;
-            }
+            if (myPeer) { myPeer.destroy(); myPeer = null; }
 
             dataConnections = {};
             incomingCalls = {};
             myOutgoingCalls = {};
             videoGrid.innerHTML = '';
+            videoGrid.classList.remove('has-focus');
             
             statUpload.innerText = '0 kbps';
             statDownload.innerText = '0 kbps';
@@ -603,60 +677,38 @@
             updateStatusUI('neutral', 'Aguardando Ação');
         }
 
-        // --- ESTATÍSTICAS (Otimizadas para Mesh) ---
+        // --- ESTATÍSTICAS ---
         async function calculateStats() {
             let currentBytesSent = 0;
             let currentBytesReceived = 0;
 
-            // Calcula Upload (Meus envios)
             for (const peerId in myOutgoingCalls) {
                 const conn = myOutgoingCalls[peerId];
                 if (!conn.peerConnection) continue;
                 try {
                     const stats = await conn.peerConnection.getStats();
                     stats.forEach(report => {
-                        if (report.type === 'outbound-rtp') {
-                            currentBytesSent += report.bytesSent || 0;
-                        }
+                        if (report.type === 'outbound-rtp') currentBytesSent += report.bytesSent || 0;
                     });
                 } catch (e) {}
             }
 
-            // Calcula Download (Vídeos recebidos)
             for (const peerId in incomingCalls) {
                 const conn = incomingCalls[peerId];
                 if (!conn.peerConnection) continue;
                 try {
                     const stats = await conn.peerConnection.getStats();
                     stats.forEach(report => {
-                        if (report.type === 'inbound-rtp') {
-                            currentBytesReceived += report.bytesReceived || 0;
-                        }
+                        if (report.type === 'inbound-rtp') currentBytesReceived += report.bytesReceived || 0;
                     });
                 } catch (e) {}
             }
 
-            // Atualiza Upload
-            if (lastBytesSent > 0) {
-                const rate = (currentBytesSent - lastBytesSent) * 8 / 2000; // kbps (intervalo 2s)
-                statUpload.innerText = `${Math.max(0, rate).toFixed(0)} kbps`;
-            }
+            if (lastBytesSent > 0) statUpload.innerText = `${Math.max(0, (currentBytesSent - lastBytesSent) * 8 / 2000).toFixed(0)} kbps`;
             lastBytesSent = currentBytesSent;
 
-            // Atualiza Download
-            if (lastBytesReceived > 0) {
-                const rate = (currentBytesReceived - lastBytesReceived) * 8 / 2000; // kbps
-                statDownload.innerText = `${Math.max(0, rate).toFixed(0)} kbps`;
-            }
+            if (lastBytesReceived > 0) statDownload.innerText = `${Math.max(0, (currentBytesReceived - lastBytesReceived) * 8 / 2000).toFixed(0)} kbps`;
             lastBytesReceived = currentBytesReceived;
-
-            // Memória
-            if (performance && performance.memory) {
-                const memMb = performance.memory.usedJSHeapSize / (1024 * 1024);
-                statMemory.innerText = `${memMb.toFixed(1)} MB`;
-            } else {
-                statMemory.innerText = 'N/A';
-            }
         }
 
         window.addEventListener('beforeunload', endSession);
