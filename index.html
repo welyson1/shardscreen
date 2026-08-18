@@ -109,22 +109,39 @@
                                 <div class="flex justify-between items-end mb-2">
                                     <label class="block text-sm font-medium text-gray-300">1. Gere o convite de conexão</label>
                                 </div>
+
+                                <label class="flex items-center gap-1.5 text-xs font-medium text-gray-400 mb-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    Senha de proteção (opcional, recomendada)
+                                </label>
+                                <input type="text" id="host-passphrase" autocomplete="off" class="w-full text-sm bg-gray-950 border border-gray-800 rounded-lg p-2.5 mb-3 text-white focus:outline-none focus:border-blue-500 transition placeholder-gray-600" placeholder="Combine uma senha com seu convidado por outro canal">
+
                                 <button id="btn-generate-offer" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                                     Selecionar Tela e Gerar Convite
                                 </button>
                                 <div class="relative mt-3">
                                     <textarea id="host-invite-text" readonly class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-gray-400 focus:outline-none resize-none" placeholder="O código do convite aparecerá aqui..."></textarea>
-                                    <button onclick="copyToClipboard('host-invite-text')" class="absolute bottom-3 right-3 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Copiar Convite">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                    </button>
+                                    <div class="absolute bottom-3 right-3 flex gap-2">
+                                        <button onclick="shareText(document.getElementById('host-invite-text').value)" class="btn-share bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Compartilhar Convite">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                        </button>
+                                        <button onclick="copyToClipboard('host-invite-text')" class="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Copiar Convite">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
                             <!-- Step 2 -->
                             <div class="pt-4 border-t border-gray-800">
                                 <label class="block text-sm font-medium text-gray-300 mb-2">2. Cole a resposta do seu convidado</label>
-                                <textarea id="host-paste-answer" class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition resize-none placeholder-gray-600" placeholder="Cole o código que seu amigo te enviar de volta..."></textarea>
+                                <div class="relative">
+                                    <textarea id="host-paste-answer" class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition resize-none placeholder-gray-600" placeholder="Cole o código que seu amigo te enviar de volta..."></textarea>
+                                    <button onclick="pasteFromClipboard('host-paste-answer')" class="absolute bottom-3 right-3 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Colar da área de transferência">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    </button>
+                                </div>
                                 <button id="btn-connect-host" class="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-green-900/20">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     Iniciar Transmissão
@@ -139,6 +156,10 @@
                             </div>
                             <h3 class="text-xl font-bold text-white">Transmissão Ativa</h3>
                             <p class="text-sm text-gray-400">Sua tela está sendo compartilhada com segurança.</p>
+                            <div class="bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 inline-block">
+                                <p class="text-xs text-gray-500 mb-1">Código de verificação (compare com o convidado)</p>
+                                <p id="host-verification-code" class="text-lg font-mono font-bold text-blue-400 tracking-widest">------</p>
+                            </div>
                             <button onclick="endSession()" class="w-full bg-red-600 hover:bg-red-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 mt-4">
                                 Parar Compartilhamento
                             </button>
@@ -169,6 +190,13 @@
                     <div class="text-sm text-purple-400 font-medium px-3 py-1 bg-purple-500/10 rounded-full border border-purple-500/20">Modo Espectador</div>
                 </div>
 
+                <div id="guest-verification-row" class="hidden justify-center">
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 inline-block text-center">
+                        <p class="text-xs text-gray-500 mb-1">Código de verificação (compare com o anfitrião)</p>
+                        <p id="guest-verification-code" class="text-lg font-mono font-bold text-purple-400 tracking-widest">------</p>
+                    </div>
+                </div>
+
                 <!-- Guest Setup Container -->
                 <div id="guest-setup-container" class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl mx-auto w-full max-w-2xl relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500"></div>
@@ -177,7 +205,20 @@
                     <div class="space-y-5">
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">1. Cole o Convite do Anfitrião</label>
-                            <textarea id="guest-paste-offer" class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 transition resize-none placeholder-gray-600" placeholder="Cole aqui o código gigantesco que seu amigo mandou..."></textarea>
+                            <div class="relative">
+                                <textarea id="guest-paste-offer" class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 transition resize-none placeholder-gray-600" placeholder="Cole aqui o código que seu amigo mandou..."></textarea>
+                                <button onclick="pasteFromClipboard('guest-paste-offer')" class="absolute bottom-3 right-3 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Colar da área de transferência">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center gap-1.5 text-xs font-medium text-gray-400 mb-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                Senha de proteção (se o anfitrião definiu uma)
+                            </label>
+                            <input type="text" id="guest-passphrase" autocomplete="off" class="w-full text-sm bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 transition placeholder-gray-600" placeholder="Peça a senha ao anfitrião, se houver">
                         </div>
                         
                         <button id="btn-generate-answer" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-3 px-4 rounded-xl transition shadow-lg shadow-purple-900/20">
@@ -188,9 +229,14 @@
                             <label class="block text-sm font-medium text-gray-300 mb-2">3. Devolva esta resposta</label>
                             <div class="relative">
                                 <textarea id="guest-answer-text" readonly class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-gray-400 focus:outline-none resize-none" placeholder="Aguarde a geração da resposta..."></textarea>
-                                <button onclick="copyToClipboard('guest-answer-text')" class="absolute bottom-3 right-3 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Copiar Resposta">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                </button>
+                                <div class="absolute bottom-3 right-3 flex gap-2">
+                                    <button onclick="shareText(document.getElementById('guest-answer-text').value)" class="btn-share bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Compartilhar Resposta">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                    </button>
+                                    <button onclick="copyToClipboard('guest-answer-text')" class="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Copiar Resposta">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -254,10 +300,15 @@
         const btnConnectHost = document.getElementById('btn-connect-host');
         const localVideoPreview = document.getElementById('local-video-preview');
         const hostVideoOverlay = document.getElementById('host-video-overlay');
+        const hostPassphrase = document.getElementById('host-passphrase');
+        const hostVerificationCode = document.getElementById('host-verification-code');
 
         // Guest Elements
         const guestSetupContainer = document.getElementById('guest-setup-container');
         const guestPasteOffer = document.getElementById('guest-paste-offer');
+        const guestPassphrase = document.getElementById('guest-passphrase');
+        const guestVerificationRow = document.getElementById('guest-verification-row');
+        const guestVerificationCode = document.getElementById('guest-verification-code');
         const btnGenerateAnswer = document.getElementById('btn-generate-answer');
         const guestAnswerText = document.getElementById('guest-answer-text');
         const remoteVideo = document.getElementById('remote-video');
@@ -287,6 +338,11 @@
                 }
             ]
         };
+
+        // Oculta os botões de "Compartilhar" em navegadores sem suporte à Web Share API
+        if (!navigator.share) {
+            document.querySelectorAll('.btn-share').forEach(btn => btn.classList.add('hidden'));
+        }
 
         // --- Funções de Interface ---
         function switchScreen(target) {
@@ -333,16 +389,178 @@
             document.getElementById('alert-modal').classList.add('hidden');
         });
 
-        function copyToClipboard(elementId) {
+        async function copyToClipboard(elementId) {
             const el = document.getElementById(elementId);
             if (!el.value) return;
-            el.select();
-            el.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            
+
+            try {
+                await navigator.clipboard.writeText(el.value);
+            } catch (e) {
+                // Fallback para contextos sem suporte à Clipboard API
+                el.select();
+                el.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+            }
+
             const originalBorder = el.style.borderColor;
             el.style.borderColor = '#10B981'; // green-500
             setTimeout(() => { el.style.borderColor = originalBorder; }, 500);
+        }
+
+        async function pasteFromClipboard(elementId) {
+            const el = document.getElementById(elementId);
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) el.value = text.trim();
+            } catch (e) {
+                showAlert("Aviso", "Não foi possível colar automaticamente (permissão do navegador). Cole manualmente com Ctrl+V.");
+            }
+        }
+
+        async function shareText(text) {
+            if (!text) return;
+            if (navigator.share) {
+                try {
+                    await navigator.share({ text });
+                } catch (e) {
+                    // Usuário cancelou o compartilhamento; nada a fazer.
+                }
+            } else {
+                showAlert("Aviso", "Compartilhamento nativo não é suportado neste navegador. Use o botão de copiar.");
+            }
+        }
+
+        // --- Compactação e Criptografia (100% local, via APIs nativas do navegador) ---
+        // Nenhuma biblioteca externa é usada aqui: apenas CompressionStream e Web Crypto,
+        // que já existem no navegador. Nada disso envolve rede ou servidor.
+        const FLAG_ENCRYPTED = 0x01;
+        const FLAG_COMPRESSED = 0x02;
+        const supportsCompression = (typeof CompressionStream !== 'undefined');
+
+        function bytesToBase64(bytes) {
+            let binary = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+            }
+            return btoa(binary);
+        }
+
+        function base64ToBytes(base64) {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes;
+        }
+
+        async function compressBytes(bytes) {
+            const cs = new CompressionStream('deflate');
+            const writer = cs.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        }
+
+        async function decompressBytes(bytes) {
+            const ds = new DecompressionStream('deflate');
+            const writer = ds.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+        }
+
+        async function deriveKey(passphrase, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']);
+            return crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptBytes(bytes, passphrase) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await deriveKey(passphrase, salt);
+            const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes));
+            const out = new Uint8Array(salt.length + iv.length + ciphertext.length);
+            out.set(salt, 0);
+            out.set(iv, salt.length);
+            out.set(ciphertext, salt.length + iv.length);
+            return out;
+        }
+
+        async function decryptBytes(bytes, passphrase) {
+            const salt = bytes.slice(0, 16);
+            const iv = bytes.slice(16, 28);
+            const ciphertext = bytes.slice(28);
+            const key = await deriveKey(passphrase, salt);
+            const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+            return new Uint8Array(plain);
+        }
+
+        // Empacota { d: RTCSessionDescription } em um código curto, sempre compactado
+        // e, se uma senha for informada, também criptografado (AES-256-GCM).
+        async function encodePayload(dataObj, passphrase) {
+            let bytes = new TextEncoder().encode(JSON.stringify(dataObj));
+            let flags = 0;
+
+            if (supportsCompression) {
+                bytes = await compressBytes(bytes);
+                flags |= FLAG_COMPRESSED;
+            }
+            if (passphrase) {
+                bytes = await encryptBytes(bytes, passphrase);
+                flags |= FLAG_ENCRYPTED;
+            }
+
+            const out = new Uint8Array(bytes.length + 1);
+            out[0] = flags;
+            out.set(bytes, 1);
+            return bytesToBase64(out);
+        }
+
+        async function decodePayload(base64Str, passphrase) {
+            const all = base64ToBytes(base64Str);
+            const flags = all[0];
+            let bytes = all.slice(1);
+
+            if (flags & FLAG_ENCRYPTED) {
+                if (!passphrase) throw new Error('SENHA_NECESSARIA');
+                bytes = await decryptBytes(bytes, passphrase);
+            }
+            if (flags & FLAG_COMPRESSED) {
+                bytes = await decompressBytes(bytes);
+            }
+            return JSON.parse(new TextDecoder().decode(bytes));
+        }
+
+        // Extrai a impressão digital do certificado DTLS de um SDP
+        function extractFingerprint(sdp) {
+            const match = sdp.match(/a=fingerprint:\S+ ([0-9A-Fa-f:]+)/);
+            return match ? match[1].toUpperCase() : null;
+        }
+
+        // Gera um código curto de verificação a partir das impressões digitais
+        // (local + remota) já presentes na conexão — nenhum dado novo é criado ou enviado,
+        // e ambos os lados chegam ao MESMO código apenas se a conexão não foi interceptada.
+        async function computeVerificationCode(pc) {
+            try {
+                const localFp = extractFingerprint(pc.localDescription.sdp);
+                const remoteFp = extractFingerprint(pc.remoteDescription.sdp);
+                if (!localFp || !remoteFp) return null;
+                const combined = [localFp, remoteFp].sort().join('|');
+                const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combined));
+                const h = new Uint8Array(digest);
+                const num = ((h[0] << 16) | (h[1] << 8) | h[2]) % 1000000;
+                return num.toString().padStart(6, '0');
+            } catch (e) {
+                console.error(e);
+                return null;
+            }
         }
 
         // --- Lógica WebRTC ---
@@ -351,21 +569,30 @@
             iceGatheringFinalized = true;
             clearTimeout(iceTimeoutTimer);
 
-            const sdpData = JSON.stringify(peerConnection.localDescription);
-            const encodedData = btoa(sdpData);
-            
-            if (role === 'host') {
-                hostInviteText.value = encodedData;
-                btnGenerateOffer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Convite Gerado`;
-                btnGenerateOffer.classList.replace('bg-blue-600', 'bg-green-600');
-                updateStatusUI('waiting', 'Aguardando Convidado');
-            } else if (role === 'guest') {
-                guestAnswerText.value = encodedData;
-                btnGenerateAnswer.innerHTML = "Resposta Gerada (Copie abaixo)";
-                btnGenerateAnswer.classList.replace('bg-purple-600', 'bg-green-600');
-                updateStatusUI('waiting', 'Pronto para receber');
-                guestVideoOverlayText.innerText = "Resposta gerada! Envie ao anfitrião e aguarde a conexão...";
-            }
+            const passphrase = (role === 'host' ? hostPassphrase.value : guestPassphrase.value).trim();
+
+            encodePayload({ d: peerConnection.localDescription }, passphrase).then((encodedData) => {
+                if (role === 'host') {
+                    hostInviteText.value = encodedData;
+                    btnGenerateOffer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Convite Gerado`;
+                    btnGenerateOffer.classList.replace('bg-blue-600', 'bg-green-600');
+                    updateStatusUI('waiting', 'Aguardando Convidado');
+                } else if (role === 'guest') {
+                    guestAnswerText.value = encodedData;
+                    btnGenerateAnswer.innerHTML = "Resposta Gerada (Copie abaixo)";
+                    btnGenerateAnswer.classList.replace('bg-purple-600', 'bg-green-600');
+                    updateStatusUI('waiting', 'Pronto para receber');
+                    guestVideoOverlayText.innerText = "Resposta gerada! Envie ao anfitrião e aguarde a conexão...";
+                }
+                // Tenta copiar automaticamente; se o navegador bloquear (sem gesto do usuário
+                // recente), o botão "Copiar" continua disponível como alternativa manual.
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(encodedData).catch(() => {});
+                }
+            }).catch((e) => {
+                console.error(e);
+                showAlert("Erro", "Não foi possível gerar o código de conexão.");
+            });
         }
 
         async function createPeerConnection(isHost) {
@@ -416,6 +643,20 @@
                             remoteVideo.play().catch(e => console.error("Falha no Autoplay do Vídeo:", e));
                         }
                     }
+
+                    // Código curto para as duas pontas confirmarem visualmente/por voz
+                    // que ninguém interceptou a troca do convite/resposta.
+                    computeVerificationCode(peerConnection).then((code) => {
+                        if (!code) return;
+                        const formatted = code.slice(0, 3) + ' ' + code.slice(3);
+                        if (isHost) {
+                            hostVerificationCode.innerText = formatted;
+                        } else {
+                            guestVerificationCode.innerText = formatted;
+                            guestVerificationRow.classList.remove('hidden');
+                            guestVerificationRow.classList.add('flex');
+                        }
+                    });
                 } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                     showAlert("Erro", "A conexão P2P foi perdida.");
                     updateStatusUI('error', 'Conexão Perdida');
@@ -485,10 +726,15 @@
 
             btnConnectHost.innerText = "Conectando...";
             try {
-                const answerDesc = JSON.parse(atob(answerCode));
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answerDesc));
+                const payload = await decodePayload(answerCode, hostPassphrase.value.trim());
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.d));
             } catch (e) {
-                showAlert("Erro", "O código de resposta é inválido ou está corrompido.");
+                console.error(e);
+                if (e.message === 'SENHA_NECESSARIA') {
+                    showAlert("Senha necessária", "Esta resposta está protegida por senha. Informe a mesma senha usada para gerar o convite.");
+                } else {
+                    showAlert("Erro", "O código de resposta é inválido, a senha está incorreta, ou o código está corrompido.");
+                }
                 btnConnectHost.innerText = "Iniciar Transmissão";
             }
         });
@@ -506,14 +752,19 @@
             guestVideoOverlayText.innerText = "Gerando resposta...";
 
             try {
-                const offerDesc = JSON.parse(atob(offerCode));
+                const payload = await decodePayload(offerCode, guestPassphrase.value.trim());
                 await createPeerConnection(false);
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(offerDesc));
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.d));
                 
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
             } catch (e) {
-                showAlert("Erro", "O código do convite é inválido ou está corrompido.");
+                console.error(e);
+                if (e.message === 'SENHA_NECESSARIA') {
+                    showAlert("Senha necessária", "Este convite está protegido por senha. Peça a senha ao anfitrião e informe-a acima.");
+                } else {
+                    showAlert("Erro", "O código do convite é inválido, a senha está incorreta, ou o código está corrompido.");
+                }
                 btnGenerateAnswer.disabled = false;
                 btnGenerateAnswer.innerText = "2. Processar e Gerar Resposta";
                 guestVideoOverlayText.innerText = "Conclua os passos acima para ver a tela.";
@@ -552,6 +803,8 @@
             hostActiveContainer.classList.add('hidden');
             hostInviteText.value = '';
             hostPasteAnswer.value = '';
+            hostPassphrase.value = '';
+            hostVerificationCode.innerText = '------';
             btnGenerateOffer.disabled = false;
             btnGenerateOffer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Selecionar Tela e Gerar Convite`;
             btnGenerateOffer.classList.replace('bg-green-600', 'bg-blue-600');
@@ -565,6 +818,10 @@
             btnFullscreen.classList.add('hidden');
             guestPasteOffer.value = '';
             guestAnswerText.value = '';
+            guestPassphrase.value = '';
+            guestVerificationCode.innerText = '------';
+            guestVerificationRow.classList.add('hidden');
+            guestVerificationRow.classList.remove('flex');
             btnGenerateAnswer.disabled = false;
             btnGenerateAnswer.innerText = "2. Processar e Gerar Resposta";
             btnGenerateAnswer.classList.replace('bg-green-600', 'bg-purple-600');
