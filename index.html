@@ -450,29 +450,41 @@
                 hostActiveContainer.classList.remove('hidden');
                 updateStatusUI('waiting', 'Transmitindo e Aguardando');
 
-                // 4. Aguardar conexões recebidas (Call)
-                // Usaremos DataConnections para ouvir quem quer entrar, e então nós ligamos (call) enviando o stream.
-                // Mas a forma mais robusta no PeerJS para "Broadcast" é o Espectador ligar para o Host, e o Host responder com o Stream.
-                
-                myPeer.on('call', (call) => {
-                    console.log("Recebida ligação de: ", call.peer);
-                    // Responde a chamada com o nosso stream de tela
-                    call.answer(localStream);
+                // 4. Aguardar conexões recebidas (Bater na porta)
+                myPeer.on('connection', (conn) => {
+                    console.log("Novo espectador conectou na sala: ", conn.peer);
                     
-                    // Salvar conexão
-                    connections[call.peer] = call;
-                    updateViewerList();
+                    conn.on('open', () => {
+                        // Quando o espectador bate na porta, o anfitrião LIGA pra ele com o vídeo
+                        if (localStream) {
+                            console.log("Enviando stream de tela para: ", conn.peer);
+                            const call = myPeer.call(conn.peer, localStream);
+                            
+                            // Salvar conexão ativa
+                            connections[conn.peer] = call;
+                            updateViewerList();
 
-                    call.on('close', () => {
-                        console.log("Espectador desconectou: ", call.peer);
-                        delete connections[call.peer];
-                        updateViewerList();
+                            call.on('close', () => {
+                                console.log("Espectador desconectou: ", call.peer);
+                                delete connections[conn.peer];
+                                updateViewerList();
+                            });
+                            
+                            call.on('error', (err) => {
+                                console.error("Erro na chamada: ", err);
+                                delete connections[conn.peer];
+                                updateViewerList();
+                            });
+                        }
                     });
-                    
-                    call.on('error', (err) => {
-                        console.error("Erro na chamada: ", err);
-                        delete connections[call.peer];
-                        updateViewerList();
+
+                    // Limpeza se a conexão de dados cair
+                    conn.on('close', () => {
+                        if(connections[conn.peer]) {
+                            connections[conn.peer].close();
+                            delete connections[conn.peer];
+                            updateViewerList();
+                        }
                     });
                 });
 
@@ -501,41 +513,46 @@
                 // 1. Conectar à rede com ID dinâmico
                 await initializePeer();
                 
-                // 2. Ligar para o Anfitrião
-                btnConnectGuest.innerHTML = "Estabelecendo P2P...";
-                guestVideoOverlayText.innerHTML = "Negociando conexão segura com a sala...";
+                // 2. Avisar o anfitrião que chegamos (Bater na porta via dados)
+                btnConnectGuest.innerHTML = "Avisando anfitrião...";
+                guestVideoOverlayText.innerHTML = "Negociando entrada na sala...";
                 
-                // Opção para receber apenas vídeo
-                const call = myPeer.call(targetPeerId, null, {
-                    metadata: { type: 'viewer' } // Se quiséssemos enviar dados extras
+                const conn = myPeer.connect(targetPeerId);
+
+                conn.on('open', () => {
+                    console.log("Conectado à sala. Aguardando transmissão...");
+                    guestVideoOverlayText.innerHTML = "Sala encontrada. Aguardando o vídeo...";
                 });
 
-                if (!call) {
-                     throw new Error("Não foi possível iniciar a chamada para a sala.");
-                }
-
-                // 3. Receber Mídia
-                call.on('stream', (remoteStream) => {
-                    console.log("Stream P2P recebido do anfitrião!");
-                    guestRemoteVideo.srcObject = remoteStream;
+                // 3. Receber a "Ligação" de volta do Anfitrião com a Mídia
+                myPeer.on('call', (call) => {
+                    console.log("Recebendo transmissão do anfitrião!");
                     
-                    // UX
-                    guestSetupContainer.classList.add('hidden');
-                    guestActiveContainer.classList.remove('hidden');
-                    guestVideoOverlay.classList.add('hidden');
-                    btnFullscreen.classList.remove('hidden');
-                    updateStatusUI('connected', 'Assistindo Tela');
-                });
+                    // Atende a chamada SEM enviar vídeo de volta (somos espectador)
+                    call.answer();
 
-                call.on('close', () => {
-                    endSession();
-                    showAlert("Aviso", "O Anfitrião encerrou a transmissão.");
-                });
+                    call.on('stream', (remoteStream) => {
+                        console.log("Vídeo P2P conectado!");
+                        guestRemoteVideo.srcObject = remoteStream;
+                        
+                        // Atualiza a UX
+                        guestSetupContainer.classList.add('hidden');
+                        guestActiveContainer.classList.remove('hidden');
+                        guestVideoOverlay.classList.add('hidden');
+                        btnFullscreen.classList.remove('hidden');
+                        updateStatusUI('connected', 'Assistindo Tela');
+                    });
 
-                call.on('error', (err) => {
-                    console.error("Call error", err);
-                    endSession();
-                    showAlert("Erro", "A conexão com a sala falhou ou foi rejeitada.");
+                    call.on('close', () => {
+                        endSession();
+                        showAlert("Aviso", "O Anfitrião encerrou a transmissão.");
+                    });
+
+                    call.on('error', (err) => {
+                        console.error("Call error", err);
+                        endSession();
+                        showAlert("Erro", "A conexão de vídeo falhou ou foi rejeitada.");
+                    });
                 });
 
                 // timeout de segurança caso a sala não exista
