@@ -3,84 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Screen Share - Multicast Pro</title>
+    <title>P2P Screen Share - Mesh Room</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PeerJS Library (para Sinalização e Conexão P2P) -->
+    <!-- PeerJS Library -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     
     <style>
-        /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #111827; }
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Ajuste de responsividade: Altura dinâmica sem cortes */
-        .video-container {
+        /* Grade Dinâmica de Vídeos */
+        #video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            height: 100%;
+            align-content: start;
+        }
+
+        .video-card {
             position: relative;
             background-color: #000;
             border-radius: 0.75rem;
             overflow: hidden;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+            aspect-ratio: 16 / 9;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
             border: 1px solid #374151;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            max-height: 80vh; /* Previne que o vídeo passe da altura da tela */
-        }
-        
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* Garante que toda a tela apareça sem cortes */
+            transition: all 0.3s ease;
         }
 
-        #local-video-preview {
-            position: absolute;
-            bottom: 1rem;
-            right: 1rem;
-            width: 25%;
-            min-width: 150px;
-            aspect-ratio: 16 / 9;
-            object-fit: cover;
-            border: 2px solid #3b82f6;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            background-color: #111827;
-            z-index: 20;
-            display: none;
+        .video-card video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
-        
-        /* Fullscreen styles */
-        :fullscreen #btn-fullscreen-text { display: none; }
-        :fullscreen #btn-fullscreen-icon-enter { display: none; }
-        :fullscreen #btn-fullscreen-icon-exit { display: block; }
-        #btn-fullscreen-icon-exit { display: none; }
-        
-        :fullscreen .video-container {
-            max-height: 100vh;
+
+        .video-label {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 0.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+            z-index: 10;
+        }
+
+        /* Tela Cheia */
+        .btn-fullscreen {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 0.4rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .video-card:hover .btn-fullscreen {
+            opacity: 1;
+        }
+
+        :fullscreen .video-card {
+            width: 100vw;
+            height: 100vh;
             border-radius: 0;
             border: none;
+            aspect-ratio: auto;
         }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
 
-    <!-- Header -->
+    <!-- Cabeçalho -->
     <header class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="bg-blue-600 p-2 rounded-lg">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold leading-tight">P2P Screen Share Pro</h1>
-                    <p class="text-xs text-gray-400">Transmissão Multicast com Estatísticas</p>
+                    <h1 class="text-lg font-bold leading-tight">P2P Sala Colaborativa</h1>
+                    <p class="text-xs text-gray-400">Compartilhamento Simultâneo (Mesh)</p>
                 </div>
             </div>
             <div id="global-status" class="flex items-center gap-2 text-sm font-medium text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700">
@@ -90,209 +107,118 @@
         </div>
     </header>
 
-    <main class="flex-grow flex items-center justify-center p-4">
-        <div class="max-w-6xl w-full mx-auto relative">
-
-            <!-- ================= SCREEN 1: HOME (CHOICE) ================= -->
-            <div id="screen-home" class="fade-in max-w-2xl mx-auto text-center space-y-8 py-12">
-                <div class="space-y-4">
-                    <h2 class="text-4xl font-extrabold tracking-tight">Como você quer se conectar?</h2>
-                    <p class="text-gray-400 text-lg">Escolha se deseja compartilhar sua tela com várias pessoas ou assistir a transmissão de alguém usando um ID curto.</p>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
-                    <!-- Host Button -->
-                    <button onclick="switchScreen('host')" class="group relative flex flex-col items-center justify-center p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 hover:border-blue-500 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] text-left hover:-translate-y-1">
-                        <div class="bg-blue-500/10 text-blue-500 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                        </div>
-                        <h3 class="text-xl font-bold mb-2">Criar Sala (Transmitir)</h3>
-                        <p class="text-sm text-gray-400 text-center">Inicie o compartilhamento da sua tela e gere um ID de Sala para convidar pessoas.</p>
-                    </button>
-
-                    <!-- Guest Button -->
-                    <button onclick="switchScreen('guest')" class="group relative flex flex-col items-center justify-center p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 hover:border-purple-500 transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] text-left hover:-translate-y-1">
-                        <div class="bg-purple-500/10 text-purple-400 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                        </div>
-                        <h3 class="text-xl font-bold mb-2">Entrar na Sala (Assistir)</h3>
-                        <p class="text-sm text-gray-400 text-center">Assista à tela de um Anfitrião usando o ID Curto que ele te enviar.</p>
-                    </button>
-                </div>
+    <main class="flex-grow flex flex-col items-center p-4 h-[calc(100vh-80px)] overflow-hidden">
+        
+        <!-- TELA INICIAL (CRIAR / ENTRAR) -->
+        <div id="screen-home" class="fade-in max-w-2xl w-full mx-auto text-center space-y-8 py-12">
+            <div class="space-y-4">
+                <h2 class="text-4xl font-extrabold tracking-tight">Sala de Reunião P2P</h2>
+                <p class="text-gray-400 text-lg">Crie uma nova sala para convidar pessoas, ou entre em uma sala existente. Todos podem compartilhar a tela simultaneamente.</p>
             </div>
-
-            <!-- ================= SCREEN 2: HOST (SHARE) ================= -->
-            <div id="screen-host" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
-                <!-- Host Left: Controls -->
-                <div class="lg:col-span-1 space-y-6">
-                    <button onclick="switchScreen('home')" class="flex items-center gap-2 text-gray-400 hover:text-white transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Voltar / Encerrar
-                    </button>
-                    
-                    <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400"></div>
-                        <h2 class="text-xl font-bold mb-6">Painel do Anfitrião</h2>
-                        
-                        <div id="host-setup-container" class="space-y-6 text-center">
-                            
-                            <!-- Opções de Captura -->
-                            <div class="bg-gray-950 p-4 rounded-lg border border-gray-800 text-left">
-                                <label class="flex items-center gap-3 cursor-pointer group">
-                                    <input type="checkbox" id="cb-audio" class="w-5 h-5 rounded border-gray-700 text-blue-600 focus:ring-blue-600 bg-gray-900 cursor-pointer">
-                                    <div>
-                                        <span class="text-sm font-medium text-gray-200 group-hover:text-white transition">Compartilhar Áudio do Sistema</span>
-                                        <p class="text-xs text-gray-500 mt-0.5">Lembre-se de marcar "Compartilhar áudio" na janela que o navegador abrir.</p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <button id="btn-start-host" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-4 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20 text-lg">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                Iniciar Transmissão
-                            </button>
-                        </div>
-
-                        <!-- Active State UI -->
-                        <div id="host-active-container" class="hidden space-y-5">
-                            
-                            <!-- Ações Rápidas -->
-                            <div class="flex gap-2">
-                                <button id="btn-change-screen" class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg border border-gray-700 transition flex justify-center items-center gap-2 text-sm">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                                    Trocar Tela/Aba
-                                </button>
-                            </div>
-
-                            <!-- Room ID -->
-                            <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 text-center">
-                                <p class="text-xs text-gray-500 mb-2 uppercase font-semibold tracking-wider">Seu ID de Sala</p>
-                                <div class="flex items-center justify-center gap-3">
-                                    <span id="host-room-id" class="text-3xl font-mono font-bold text-blue-400 tracking-widest bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-500/30">------</span>
-                                    <button onclick="copyRoomId()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-lg text-gray-300 transition" title="Copiar ID">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                    </button>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-3">Envie este ID para quem for assistir.</p>
-                            </div>
-
-                            <!-- Viewers -->
-                            <div class="bg-gray-800 rounded-lg p-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="text-sm font-medium text-gray-300">Espectadores Conectados</h3>
-                                    <span id="host-viewer-count" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
-                                </div>
-                                <ul id="host-viewer-list" class="space-y-1 text-xs text-gray-400 max-h-24 overflow-y-auto">
-                                    <li class="text-gray-500 italic py-1">Ninguém conectado ainda.</li>
-                                </ul>
-                            </div>
-
-                            <!-- Estatísticas -->
-                            <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                                <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                                    Desempenho (Soma de todos)
-                                </h3>
-                                <div class="grid grid-cols-2 gap-3 text-xs">
-                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
-                                        <p class="text-gray-500 mb-1">Velocidade Upload</p>
-                                        <p id="stat-bitrate" class="font-mono font-bold text-green-400">0 kbps</p>
-                                    </div>
-                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
-                                        <p class="text-gray-500 mb-1">Trafegado (Total)</p>
-                                        <p id="stat-total-data" class="font-mono font-bold text-blue-400">0.0 MB</p>
-                                    </div>
-                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
-                                        <p class="text-gray-500 mb-1">FPS / Resolução</p>
-                                        <p class="font-mono text-gray-300"><span id="stat-fps">0</span> fps | <span id="stat-res">0x0</span></p>
-                                    </div>
-                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
-                                        <p class="text-gray-500 mb-1">Memória RAM (Aba)</p>
-                                        <p id="stat-memory" class="font-mono text-gray-300">N/A</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
+                <!-- Criar Sala -->
+                <button onclick="createRoom()" class="group relative flex flex-col items-center justify-center p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 hover:border-blue-500 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] text-left hover:-translate-y-1">
+                    <div class="bg-blue-500/10 text-blue-500 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     </div>
-                </div>
-                
-                <!-- Host Right: Video Area -->
-                <div class="lg:col-span-2 flex flex-col h-full min-h-[400px]">
-                    <div class="video-container bg-gray-900 w-full relative">
-                        <!-- Host sees nothing on the main screen unless they are sharing -->
-                        <div id="host-video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 z-10">
-                            <svg class="w-16 h-16 text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                            <p class="text-lg text-gray-500">Transmissão Não Iniciada</p>
-                        </div>
-                        
-                        <!-- My Own Shared Screen (Picture in Picture style for host to confirm) -->
-                        <video id="host-local-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain; display:none;"></video>
+                    <h3 class="text-xl font-bold mb-2">Criar Sala Nova</h3>
+                    <p class="text-sm text-gray-400 text-center">Gera um ID único. Você será o primeiro a entrar na sala.</p>
+                </button>
+
+                <!-- Entrar na Sala -->
+                <div class="group relative flex flex-col items-center justify-center p-8 bg-gray-900 rounded-2xl border-2 border-gray-800 transition-all text-left">
+                    <div class="bg-purple-500/10 text-purple-400 p-4 rounded-full mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Entrar em Sala Existente</h3>
+                    <div class="w-full space-y-2">
+                        <input type="text" id="join-room-id" class="w-full text-center text-lg tracking-widest font-mono font-bold bg-gray-950 border border-gray-700 rounded-lg p-2 text-purple-400 focus:outline-none focus:border-purple-500 transition placeholder-gray-700 uppercase" placeholder="ABC-123" maxlength="7">
+                        <button onclick="joinRoom()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2 rounded-lg transition">Entrar</button>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- ================= SCREEN 3: GUEST (WATCH) ================= -->
-            <div id="screen-guest" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- TELA DA SALA (GRADE DE VÍDEOS E PAINEL) -->
+        <div id="screen-room" class="hidden fade-in w-full max-w-7xl h-full flex flex-col lg:flex-row gap-6 pb-4">
+            
+            <!-- Barra Lateral Esquerda -->
+            <div class="w-full lg:w-80 flex flex-col gap-4 flex-shrink-0">
                 
-                <!-- Guest Left: Controls -->
-                <div class="lg:col-span-1 space-y-6">
-                    <button onclick="switchScreen('home')" class="flex items-center gap-2 text-gray-400 hover:text-white transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Voltar / Sair
-                    </button>
-                    
-                    <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500"></div>
-                        <h2 class="text-xl font-bold mb-6">Entrar na Sala</h2>
-                        
-                        <div id="guest-setup-container" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">ID da Sala do Anfitrião</label>
-                                <input type="text" id="guest-room-id-input" class="w-full text-center text-2xl tracking-widest font-mono font-bold bg-gray-950 border border-gray-700 rounded-lg p-3 text-purple-400 focus:outline-none focus:border-purple-500 transition placeholder-gray-700 uppercase" placeholder="ABC-123" maxlength="7">
-                            </div>
-                            
-                            <button id="btn-connect-guest" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-purple-900/20">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                Conectar
-                            </button>
-                        </div>
-
-                        <!-- Guest Connected State -->
-                        <div id="guest-active-container" class="hidden space-y-4 text-center py-4">
-                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 text-green-400 mb-2">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            </div>
-                            <h3 class="text-lg font-bold text-white">Conectado à Sala</h3>
-                            <p class="text-sm text-gray-400">Recebendo transmissão do anfitrião.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Guest Right: Video Player -->
-                <div class="lg:col-span-2 flex flex-col h-full min-h-[400px]">
-                    <div id="guest-video-wrapper" class="video-container shadow-2xl bg-gray-950 w-full relative group h-full">
-                        <video id="guest-remote-video" autoplay playsinline></video>
-                        
-                        <!-- Overlay Waiting Message -->
-                        <div id="guest-video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 z-10 backdrop-blur-sm transition-opacity duration-300">
-                            <svg class="w-16 h-16 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            <p id="guest-video-overlay-text" class="text-lg text-gray-400 text-center px-4 font-medium">Insira o ID da Sala para assistir.</p>
-                        </div>
-
-                        <!-- Fullscreen Button -->
-                        <button id="btn-fullscreen" class="absolute bottom-4 right-4 bg-black/60 hover:bg-black/80 text-white p-3 rounded-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md hidden">
-                            <svg id="btn-fullscreen-icon-enter" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                            <svg id="btn-fullscreen-icon-exit" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4m0-4l-5 5m11-5h4v4m0-4l-5 5M4 10h4V6m0 4l-5-5m11 5h4V6m0 4l-5-5"></path></svg>
+                <!-- Info da Sala -->
+                <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 shadow-xl text-center">
+                    <p class="text-xs text-gray-500 mb-1 uppercase font-semibold">ID desta Sala</p>
+                    <div class="flex items-center justify-center gap-2 mb-4">
+                        <span id="room-id-display" class="text-2xl font-mono font-bold text-blue-400 tracking-widest">------</span>
+                        <button onclick="copyRoomId()" class="bg-gray-800 hover:bg-gray-700 p-2 rounded text-gray-300 transition" title="Copiar ID">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                         </button>
                     </div>
+                    
+                    <!-- Botões Principais -->
+                    <button id="btn-start-share" onclick="startScreenShare()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition flex justify-center items-center gap-2 mb-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        Compartilhar Tela
+                    </button>
+                    <button id="btn-stop-share" onclick="stopScreenShare()" class="hidden w-full bg-red-600 hover:bg-red-500 text-white font-medium py-3 rounded-lg transition flex justify-center items-center gap-2 mb-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+                        Parar Transmissão
+                    </button>
+                    <button onclick="endSession()" class="w-full bg-gray-800 hover:bg-gray-700 text-red-400 font-medium py-2 rounded-lg transition flex justify-center items-center gap-2">
+                        Sair da Sala
+                    </button>
                 </div>
+
+                <!-- Estatísticas de Desempenho -->
+                <div class="bg-gray-900 rounded-xl p-5 border border-gray-800 flex-grow overflow-hidden flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-medium text-gray-300">Painel de Tráfego</h3>
+                        <span class="flex h-2 w-2 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs flex-grow content-start">
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-gray-500">Pessoas na Sala</p>
+                            <p id="stat-peers" class="font-bold text-white text-lg">1</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800">
+                            <p class="text-gray-500">Sua RAM (Aba)</p>
+                            <p id="stat-memory" class="font-mono text-gray-300 mt-1">N/A</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800 col-span-2">
+                            <p class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Enviando (Upload)</p>
+                            <p id="stat-upload" class="font-mono font-bold text-blue-400 text-lg">0 kbps</p>
+                        </div>
+                        <div class="bg-gray-950 p-2 rounded border border-gray-800 col-span-2">
+                            <p class="text-gray-500 flex items-center gap-1"><svg class="w-3 h-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Recebendo (Download)</p>
+                            <p id="stat-download" class="font-mono font-bold text-purple-400 text-lg">0 kbps</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Área Principal: Grade de Vídeos -->
+            <div class="flex-grow bg-gray-900 rounded-xl border border-gray-800 overflow-y-auto p-4 flex items-center justify-center">
+                <!-- Se vazio, mostra aviso -->
+                <div id="empty-room-msg" class="text-center text-gray-500 absolute pointer-events-none flex flex-col items-center">
+                    <svg class="w-16 h-16 text-gray-800 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <p>Nenhuma tela compartilhada ainda.</p>
+                </div>
+
+                <!-- O Grid -->
+                <div id="video-grid"></div>
             </div>
 
         </div>
     </main>
 
-    <!-- Custom Alert Modal -->
+    <!-- Modal de Aviso -->
     <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] hidden">
-        <div class="bg-gray-900 p-6 rounded-2xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4 transform scale-100 transition-transform">
+        <div class="bg-gray-900 p-6 rounded-2xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4">
             <h3 id="alert-title" class="text-xl font-bold mb-2 text-white">Aviso</h3>
             <p id="alert-message" class="text-gray-400 mb-6 text-sm"></p>
             <button id="btn-close-alert" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition">Entendi</button>
@@ -300,55 +226,51 @@
     </div>
 
     <script>
-        // --- Application State ---
-        let role = null; // 'host' or 'guest'
+        // --- ESTADO DA APLICAÇÃO (MALHA/MESH) ---
         let myPeer = null; 
-        let localStream = null; 
-        let connections = {}; // { peerId: MediaConnection }
-        let currentRoomId = null;
+        let isRoomHost = false;
+        let myRoomId = null;
+        let myPeerId = null;
+        
+        let dataConnections = {}; // Conexões de Chat/Sinalização P2P { peerId: DataConnection }
+        let myOutgoingCalls = {}; // Conexões de Mídia saindo de mim { peerId: MediaConnection }
+        let incomingCalls = {};   // Conexões de Mídia chegando para mim { peerId: MediaConnection }
+        
+        let localStream = null;
         let statsIntervalId = null;
+        
+        // Dados de Estatísticas
+        let lastBytesSent = 0;
+        let lastBytesReceived = 0;
 
-        // Variaveis de monitoramento de banda
-        let lastTotalBytesSent = 0;
+        // Prefixo para garantir compatibilidade
+        const APP_PREFIX = 'P2P-MESH-V1-'; 
 
-        // --- UI Elements ---
+        // --- ELEMENTOS DE UI ---
         const screenHome = document.getElementById('screen-home');
-        const screenHost = document.getElementById('screen-host');
-        const screenGuest = document.getElementById('screen-guest');
+        const screenRoom = document.getElementById('screen-room');
+        const joinRoomIdInput = document.getElementById('join-room-id');
+        const roomIdDisplay = document.getElementById('room-id-display');
+        const videoGrid = document.getElementById('video-grid');
+        const emptyRoomMsg = document.getElementById('empty-room-msg');
+        const btnStartShare = document.getElementById('btn-start-share');
+        const btnStopShare = document.getElementById('btn-stop-share');
+        
+        const statPeers = document.getElementById('stat-peers');
+        const statUpload = document.getElementById('stat-upload');
+        const statDownload = document.getElementById('stat-download');
+        const statMemory = document.getElementById('stat-memory');
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
 
-        // Host
-        const hostSetupContainer = document.getElementById('host-setup-container');
-        const hostActiveContainer = document.getElementById('host-active-container');
-        const btnStartHost = document.getElementById('btn-start-host');
-        const cbAudio = document.getElementById('cb-audio');
-        const btnChangeScreen = document.getElementById('btn-change-screen');
-        const hostRoomIdElement = document.getElementById('host-room-id');
-        const hostViewerList = document.getElementById('host-viewer-list');
-        const hostViewerCount = document.getElementById('host-viewer-count');
-        const hostVideoOverlay = document.getElementById('host-video-overlay');
-        const hostLocalVideo = document.getElementById('host-local-video');
+        // Formatação do Input
+        joinRoomIdInput.addEventListener('input', function (e) {
+            let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 6);
+            e.target.value = val;
+        });
 
-        // Stats Elements
-        const statBitrate = document.getElementById('stat-bitrate');
-        const statTotalData = document.getElementById('stat-total-data');
-        const statFps = document.getElementById('stat-fps');
-        const statRes = document.getElementById('stat-res');
-        const statMemory = document.getElementById('stat-memory');
-
-        // Guest
-        const guestSetupContainer = document.getElementById('guest-setup-container');
-        const guestActiveContainer = document.getElementById('guest-active-container');
-        const guestRoomIdInput = document.getElementById('guest-room-id-input');
-        const btnConnectGuest = document.getElementById('btn-connect-guest');
-        const guestRemoteVideo = document.getElementById('guest-remote-video');
-        const guestVideoOverlay = document.getElementById('guest-video-overlay');
-        const guestVideoOverlayText = document.getElementById('guest-video-overlay-text');
-        const guestVideoWrapper = document.getElementById('guest-video-wrapper');
-        const btnFullscreen = document.getElementById('btn-fullscreen');
-
-        // --- Utility Functions ---
+        // --- UTILIDADES ---
         function generateShortId() {
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             const numbers = '0123456789';
@@ -374,392 +296,367 @@
             if (state === 'neutral') statusDot.classList.add('bg-gray-500');
             if (state === 'waiting') statusDot.classList.add('bg-yellow-400', 'animate-pulse');
             if (state === 'connected') statusDot.classList.add('bg-green-500');
-            if (state === 'error') statusDot.classList.add('bg-red-500');
-        }
-
-        function switchScreen(target) {
-            if (target === 'home') endSession();
-
-            screenHome.classList.add('hidden');
-            screenHost.classList.add('hidden');
-            screenGuest.classList.add('hidden');
-
-            if (target === 'home') {
-                screenHome.classList.remove('hidden');
-                updateStatusUI('neutral', 'Aguardando Ação');
-                role = null;
-            } else if (target === 'host') {
-                screenHost.classList.remove('hidden');
-                updateStatusUI('neutral', 'Modo Transmissor');
-                role = 'host';
-            } else if (target === 'guest') {
-                screenGuest.classList.remove('hidden');
-                updateStatusUI('neutral', 'Modo Espectador');
-                role = 'guest';
-                guestRoomIdInput.addEventListener('input', function (e) {
-                    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 6);
-                    e.target.value = val;
-                });
-            }
         }
 
         function copyRoomId() {
-            if(!currentRoomId) return;
-            navigator.clipboard.writeText(currentRoomId).then(() => {
-                const el = hostRoomIdElement;
+            if(!myRoomId) return;
+            navigator.clipboard.writeText(myRoomId).then(() => {
+                const el = roomIdDisplay;
                 const originalClass = el.className;
-                el.classList.add('bg-green-900/50', 'text-green-400', 'border-green-500');
+                el.classList.add('text-green-400');
                 setTimeout(() => { el.className = originalClass; }, 600);
-            }).catch(err => showAlert("Erro", "Copie o ID manualmente."));
+            });
         }
 
-        // --- PeerJS / WebRTC ---
-        const APP_PREFIX = 'P2P-PRO-V1-'; 
+        function updateUIOnPeersChange() {
+            const count = Object.keys(dataConnections).length + 1; // +1 (Eu mesmo)
+            statPeers.innerText = count;
+        }
 
-        function initializePeer(id = null) {
-            const peerOptions = {
-                debug: 1,
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
+        function checkGridEmpty() {
+            if (videoGrid.children.length === 0) {
+                emptyRoomMsg.style.display = 'flex';
+            } else {
+                emptyRoomMsg.style.display = 'none';
+            }
+        }
+
+        // --- GERENCIAMENTO DE VÍDEO (GRADE) ---
+        function addVideoToGrid(id, stream, isLocal = false) {
+            // Se já existe, remove primeiro
+            removeVideoFromGrid(id);
+
+            const card = document.createElement('div');
+            card.className = "video-card fade-in";
+            card.id = `video-wrapper-${id}`;
+
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.playsInline = true;
+            if (isLocal) {
+                video.muted = true; // Impede ouvir a própria tela (eco infinito se vazar mic)
+            }
+
+            const label = document.createElement('div');
+            label.className = "video-label";
+            label.innerText = isLocal ? "Sua Tela" : `Tela de ${id.replace(APP_PREFIX, '').substring(0,6)}`;
+
+            const fsBtn = document.createElement('button');
+            fsBtn.className = "btn-fullscreen";
+            fsBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>`;
+            fsBtn.onclick = () => {
+                if (!document.fullscreenElement) {
+                    card.requestFullscreen().catch(err => console.error(err));
+                } else {
+                    document.exitFullscreen();
                 }
             };
-            
-            myPeer = id ? new Peer(APP_PREFIX + id, peerOptions) : new Peer(peerOptions);
 
+            card.appendChild(video);
+            card.appendChild(label);
+            card.appendChild(fsBtn);
+            videoGrid.appendChild(card);
+            
+            checkGridEmpty();
+        }
+
+        function removeVideoFromGrid(id) {
+            const el = document.getElementById(`video-wrapper-${id}`);
+            if (el) {
+                el.remove();
+            }
+            checkGridEmpty();
+        }
+
+        // --- SISTEMA PEERJS E MALHA P2P (MESH) ---
+        async function startPeerJS(requestedId = null) {
             return new Promise((resolve, reject) => {
-                myPeer.on('open', resolve);
+                const opts = {
+                    config: {
+                        'iceServers': [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'turn:openrelay.metered.ca:80', username: "openrelayproject", credential: "openrelayproject" },
+                            { urls: 'turn:openrelay.metered.ca:443', username: "openrelayproject", credential: "openrelayproject" }
+                        ]
+                    }
+                };
+                
+                myPeer = requestedId ? new Peer(requestedId, opts) : new Peer(opts);
+
+                myPeer.on('open', (id) => {
+                    myPeerId = id;
+                    resolve(id);
+                });
+
                 myPeer.on('error', (err) => {
-                    if(err.type === 'unavailable-id') reject(new Error("ID em uso. Tente novamente."));
-                    else reject(new Error("Falha ao conectar aos servidores."));
+                    if (err.type === 'unavailable-id') reject(new Error("ID da sala já existe. Tente outro."));
+                    else reject(err);
+                });
+
+                // Quando alguém me liga (Dados/Sinalização do Mesh)
+                myPeer.on('connection', (conn) => {
+                    setupDataConnection(conn);
+                });
+
+                // Quando alguém me liga (Vídeo/Mídia)
+                myPeer.on('call', (call) => {
+                    // Eu apenas assisto, não retorno vídeo nesta chamada
+                    call.answer(); 
+                    
+                    incomingCalls[call.peer] = call;
+
+                    call.on('stream', (remoteStream) => {
+                        addVideoToGrid(call.peer, remoteStream, false);
+                    });
+
+                    call.on('close', () => {
+                        removeVideoFromGrid(call.peer);
+                        delete incomingCalls[call.peer];
+                    });
+                    
+                    call.on('error', () => {
+                        removeVideoFromGrid(call.peer);
+                        delete incomingCalls[call.peer];
+                    });
                 });
             });
         }
 
-        // --- Host Engine ---
-        function updateViewerList() {
-            const ids = Object.keys(connections);
-            hostViewerCount.innerText = ids.length;
-            hostViewerList.innerHTML = '';
-            
-            if (ids.length === 0) {
-                hostViewerList.innerHTML = '<li class="text-gray-500 italic py-1">Ninguém conectado ainda.</li>';
-                return;
-            }
+        // Conecta-se a um novo participante via Chat (Data)
+        function connectToPeer(targetPeerId) {
+            if (targetPeerId === myPeerId) return; // Não conecta a mim mesmo
+            if (dataConnections[targetPeerId]) return; // Já conectado
 
-            ids.forEach((id, index) => {
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center py-1.5 border-b border-gray-700/50 last:border-0";
-                li.innerHTML = `
-                    <span class="flex items-center gap-2">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> 
-                        Espectador ${index + 1}
-                    </span>
-                    <span class="text-gray-600 text-[10px] uppercase font-mono">${id.substring(0, 8)}...</span>
-                `;
-                hostViewerList.appendChild(li);
+            const conn = myPeer.connect(targetPeerId);
+            setupDataConnection(conn);
+        }
+
+        function setupDataConnection(conn) {
+            conn.on('open', () => {
+                dataConnections[conn.peer] = conn;
+                updateUIOnPeersChange();
+
+                // Regra do Mesh: O Anfitrião compartilha a lista com quem acabou de entrar
+                if (isRoomHost) {
+                    const peerList = Object.keys(dataConnections);
+                    conn.send({ type: 'PEER_LIST', peers: peerList });
+                }
+
+                // Se eu já estiver compartilhando tela, ligo para o novato imediatamente
+                if (localStream) {
+                    const call = myPeer.call(conn.peer, localStream);
+                    myOutgoingCalls[conn.peer] = call;
+                }
+            });
+
+            conn.on('data', (data) => {
+                // Ao receber a lista do anfitrião, conecto aos outros da sala (formando a teia)
+                if (data.type === 'PEER_LIST') {
+                    data.peers.forEach(peerId => {
+                        connectToPeer(peerId);
+                    });
+                }
+            });
+
+            conn.on('close', () => {
+                delete dataConnections[conn.peer];
+                updateUIOnPeersChange();
+            });
+
+            conn.on('error', () => {
+                delete dataConnections[conn.peer];
+                updateUIOnPeersChange();
             });
         }
 
-        // Lógica de Estatísticas do Anfitrião
-        async function calculateStats() {
-            if (Object.keys(connections).length === 0) {
-                statBitrate.innerText = '0 kbps';
-                statFps.innerText = '0';
-                statRes.innerText = '0x0';
+        // --- AÇÕES DA INTERFACE ---
+
+        async function createRoom() {
+            myRoomId = generateShortId();
+            const fullId = APP_PREFIX + myRoomId;
+            
+            try {
+                updateStatusUI('waiting', 'Criando sala...');
+                await startPeerJS(fullId);
+                
+                isRoomHost = true;
+                roomIdDisplay.innerText = myRoomId;
+                
+                screenHome.classList.add('hidden');
+                screenRoom.classList.remove('hidden');
+                updateStatusUI('connected', 'Conectado');
+                
+                statsIntervalId = setInterval(calculateStats, 2000);
+                checkGridEmpty();
+            } catch (e) {
+                showAlert("Erro", e.message || "Falha ao criar sala.");
+                updateStatusUI('neutral', 'Aguardando Ação');
+            }
+        }
+
+        async function joinRoom() {
+            const rawId = joinRoomIdInput.value.trim();
+            if (rawId.length !== 7) {
+                showAlert("Aviso", "Digite um ID válido. Ex: ABC-123");
                 return;
             }
+            myRoomId = rawId;
+            const targetHostId = APP_PREFIX + rawId;
 
-            let currentTotalBytes = 0;
-            let currentFps = 0;
-            let currentWidth = 0;
-            let currentHeight = 0;
+            try {
+                updateStatusUI('waiting', 'Entrando na sala...');
+                await startPeerJS(); // ID aleatório para mim
+                
+                isRoomHost = false;
+                roomIdDisplay.innerText = myRoomId;
 
-            // Percorre todas as conexões P2P ativas
-            for (const peerId in connections) {
-                const conn = connections[peerId];
+                // Conecta com o anfitrião para entrar na malha
+                connectToPeer(targetHostId);
+
+                screenHome.classList.add('hidden');
+                screenRoom.classList.remove('hidden');
+                updateStatusUI('connected', 'Conectado');
+                
+                statsIntervalId = setInterval(calculateStats, 2000);
+                checkGridEmpty();
+            } catch (e) {
+                showAlert("Erro", "Falha ao acessar os servidores.");
+                updateStatusUI('neutral', 'Aguardando Ação');
+            }
+        }
+
+        async function startScreenShare() {
+            try {
+                btnStartShare.disabled = true;
+                
+                // O próprio navegador cuida de perguntar sobre o áudio nativamente
+                localStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: true
+                });
+
+                // Monitora se o usuário clicar no botão nativo "Parar compartilhamento" do navegador
+                localStream.getVideoTracks()[0].onended = stopScreenShare;
+
+                // Adiciona na minha própria interface
+                addVideoToGrid('local', localStream, true);
+
+                // Dispara o vídeo para todos conectados atualmente na malha
+                Object.keys(dataConnections).forEach(peerId => {
+                    const call = myPeer.call(peerId, localStream);
+                    myOutgoingCalls[peerId] = call;
+                });
+
+                btnStartShare.classList.add('hidden');
+                btnStopShare.classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                showAlert("Aviso", "Permissão negada ou cancelada.");
+            } finally {
+                btnStartShare.disabled = false;
+            }
+        }
+
+        function stopScreenShare() {
+            // BUGFIX ÁUDIO: Para e destrói rigorosamente todas as trilhas (vídeo e áudio) capturadas no hardware
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop(); // O.S. corta o microfone/áudio do sistema imediatamente
+                });
+                localStream = null;
+            }
+
+            // Encerra as chamadas WebRTC (Isso notifica os remotos e remove o vídeo deles na hora)
+            Object.values(myOutgoingCalls).forEach(call => {
+                call.close();
+            });
+            myOutgoingCalls = {};
+
+            removeVideoFromGrid('local');
+
+            btnStopShare.classList.add('hidden');
+            btnStartShare.classList.remove('hidden');
+        }
+
+        function endSession() {
+            stopScreenShare();
+
+            if (statsIntervalId) clearInterval(statsIntervalId);
+            
+            if (myPeer) {
+                myPeer.destroy();
+                myPeer = null;
+            }
+
+            dataConnections = {};
+            incomingCalls = {};
+            myOutgoingCalls = {};
+            videoGrid.innerHTML = '';
+            
+            statUpload.innerText = '0 kbps';
+            statDownload.innerText = '0 kbps';
+            statPeers.innerText = '0';
+            
+            screenRoom.classList.add('hidden');
+            screenHome.classList.remove('hidden');
+            updateStatusUI('neutral', 'Aguardando Ação');
+        }
+
+        // --- ESTATÍSTICAS (Otimizadas para Mesh) ---
+        async function calculateStats() {
+            let currentBytesSent = 0;
+            let currentBytesReceived = 0;
+
+            // Calcula Upload (Meus envios)
+            for (const peerId in myOutgoingCalls) {
+                const conn = myOutgoingCalls[peerId];
                 if (!conn.peerConnection) continue;
-
                 try {
                     const stats = await conn.peerConnection.getStats();
                     stats.forEach(report => {
-                        // Captura dados do Vídeo enviado
-                        if (report.type === 'outbound-rtp' && report.kind === 'video') {
-                            currentTotalBytes += report.bytesSent || 0;
-                            if (report.framesPerSecond) currentFps = report.framesPerSecond;
-                            if (report.frameWidth) currentWidth = report.frameWidth;
-                            if (report.frameHeight) currentHeight = report.frameHeight;
-                        }
-                        // Captura dados do Áudio enviado
-                        if (report.type === 'outbound-rtp' && report.kind === 'audio') {
-                            currentTotalBytes += report.bytesSent || 0;
+                        if (report.type === 'outbound-rtp') {
+                            currentBytesSent += report.bytesSent || 0;
                         }
                     });
-                } catch (e) { /* Ignorar peers fechando */ }
+                } catch (e) {}
             }
 
-            // Cálculo de Banda em Tempo Real
-            if (lastTotalBytesSent > 0) {
-                const bytesInOneSecond = currentTotalBytes - lastTotalBytesSent;
-                const kbps = (bytesInOneSecond * 8) / 1000; // Converte bytes/s para kilobits/s
-                statBitrate.innerText = `${kbps.toFixed(0)} kbps`;
+            // Calcula Download (Vídeos recebidos)
+            for (const peerId in incomingCalls) {
+                const conn = incomingCalls[peerId];
+                if (!conn.peerConnection) continue;
+                try {
+                    const stats = await conn.peerConnection.getStats();
+                    stats.forEach(report => {
+                        if (report.type === 'inbound-rtp') {
+                            currentBytesReceived += report.bytesReceived || 0;
+                        }
+                    });
+                } catch (e) {}
             }
-            lastTotalBytesSent = currentTotalBytes;
-            
-            // Dados Acumulados e Resolução
-            const mbTotal = currentTotalBytes / (1024 * 1024);
-            statTotalData.innerText = `${mbTotal.toFixed(1)} MB`;
-            statFps.innerText = currentFps > 0 ? Math.round(currentFps) : 0;
-            statRes.innerText = currentWidth > 0 ? `${currentWidth}x${currentHeight}` : '0x0';
 
-            // Memória RAM da Aba (Funciona em navegadores baseados no Chromium como Chrome/Edge/Opera)
+            // Atualiza Upload
+            if (lastBytesSent > 0) {
+                const rate = (currentBytesSent - lastBytesSent) * 8 / 2000; // kbps (intervalo 2s)
+                statUpload.innerText = `${Math.max(0, rate).toFixed(0)} kbps`;
+            }
+            lastBytesSent = currentBytesSent;
+
+            // Atualiza Download
+            if (lastBytesReceived > 0) {
+                const rate = (currentBytesReceived - lastBytesReceived) * 8 / 2000; // kbps
+                statDownload.innerText = `${Math.max(0, rate).toFixed(0)} kbps`;
+            }
+            lastBytesReceived = currentBytesReceived;
+
+            // Memória
             if (performance && performance.memory) {
                 const memMb = performance.memory.usedJSHeapSize / (1024 * 1024);
                 statMemory.innerText = `${memMb.toFixed(1)} MB`;
             } else {
                 statMemory.innerText = 'N/A';
             }
-        }
-
-        btnStartHost.addEventListener('click', async () => {
-            btnStartHost.disabled = true;
-            btnStartHost.innerHTML = "Solicitando tela...";
-            
-            try {
-                // Captura Tela (com ou sem áudio conforme Checkbox)
-                const shareAudio = cbAudio.checked;
-                localStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always" },
-                    audio: shareAudio
-                });
-                
-                hostLocalVideo.srcObject = localStream;
-                hostLocalVideo.style.display = 'block';
-                hostVideoOverlay.style.display = 'none';
-
-                localStream.getVideoTracks()[0].onended = () => {
-                    showAlert("Aviso", "Transmissão encerrada.");
-                    endSession();
-                };
-
-                btnStartHost.innerHTML = "Criando Sala...";
-
-                // Inicializa Peer
-                currentRoomId = generateShortId();
-                await initializePeer(currentRoomId);
-                
-                // Atualiza UI
-                hostRoomIdElement.innerText = currentRoomId;
-                hostSetupContainer.classList.add('hidden');
-                hostActiveContainer.classList.remove('hidden');
-                updateStatusUI('waiting', 'Transmitindo e Aguardando');
-
-                // Inicia loop de estatísticas a cada 1 segundo
-                statsIntervalId = setInterval(calculateStats, 1000);
-
-                // Escuta quem entrar na sala
-                myPeer.on('connection', (conn) => {
-                    conn.on('open', () => {
-                        if (localStream) {
-                            const call = myPeer.call(conn.peer, localStream);
-                            connections[conn.peer] = call;
-                            updateViewerList();
-
-                            call.on('close', () => {
-                                delete connections[conn.peer];
-                                updateViewerList();
-                            });
-                            call.on('error', () => {
-                                delete connections[conn.peer];
-                                updateViewerList();
-                            });
-                        }
-                    });
-                    conn.on('close', () => {
-                        if(connections[conn.peer]) {
-                            connections[conn.peer].close();
-                            delete connections[conn.peer];
-                            updateViewerList();
-                        }
-                    });
-                });
-
-            } catch (err) {
-                console.error(err);
-                showAlert("Erro", err.message || "Permissão de tela negada.");
-                btnStartHost.disabled = false;
-                btnStartHost.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Iniciar Transmissão`;
-            }
-        });
-
-        // Ação: Mudar Tela/Aba em Tempo Real
-        btnChangeScreen.addEventListener('click', async () => {
-            try {
-                // Solicita nova tela mantendo a configuração de áudio original
-                const shareAudio = cbAudio.checked;
-                const newStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always" },
-                    audio: shareAudio
-                });
-
-                // Atualiza visualização local
-                hostLocalVideo.srcObject = newStream;
-                
-                const newVideoTrack = newStream.getVideoTracks()[0];
-                const newAudioTrack = newStream.getAudioTracks()[0];
-
-                newVideoTrack.onended = () => {
-                    showAlert("Aviso", "Transmissão encerrada.");
-                    endSession();
-                };
-
-                // Troca a trilha (ReplaceTrack) em todas as conexões P2P ativas
-                for (const peerId in connections) {
-                    const call = connections[peerId];
-                    if (call.peerConnection) {
-                        const senders = call.peerConnection.getSenders();
-                        
-                        // Troca o vídeo
-                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                        if (videoSender && newVideoTrack) videoSender.replaceTrack(newVideoTrack);
-
-                        // Troca o áudio (se houver e o usuário optou por áudio no início)
-                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-                        if (audioSender && newAudioTrack) {
-                            audioSender.replaceTrack(newAudioTrack);
-                        }
-                    }
-                }
-                
-                // Atualiza a referência master
-                localStream = newStream;
-                showAlert("Sucesso", "Tela/Aba atualizada para todos os espectadores!");
-
-            } catch (err) {
-                console.error("Troca cancelada:", err);
-            }
-        });
-
-        // --- Guest Engine ---
-        btnConnectGuest.addEventListener('click', async () => {
-            const rawId = guestRoomIdInput.value.trim();
-            if (rawId.length !== 7 || !rawId.includes('-')) {
-                showAlert("Erro", "Formato de ID inválido. Use o formato ABC-123.");
-                return;
-            }
-
-            const targetPeerId = APP_PREFIX + rawId;
-            btnConnectGuest.disabled = true;
-            btnConnectGuest.innerHTML = "Conectando...";
-            guestVideoOverlayText.innerHTML = "Localizando Sala...";
-
-            try {
-                await initializePeer();
-                
-                guestVideoOverlayText.innerHTML = "Negociando entrada na sala...";
-                const conn = myPeer.connect(targetPeerId);
-
-                conn.on('open', () => {
-                    guestVideoOverlayText.innerHTML = "Aguardando o vídeo...";
-                });
-
-                // Atende a chamada do anfitrião
-                myPeer.on('call', (call) => {
-                    call.answer(); // Responde vazio
-                    
-                    call.on('stream', (remoteStream) => {
-                        guestRemoteVideo.srcObject = remoteStream;
-                        
-                        guestSetupContainer.classList.add('hidden');
-                        guestActiveContainer.classList.remove('hidden');
-                        guestVideoOverlay.classList.add('hidden');
-                        btnFullscreen.classList.remove('hidden');
-                        updateStatusUI('connected', 'Assistindo Tela');
-                    });
-
-                    call.on('close', () => {
-                        endSession();
-                        showAlert("Aviso", "O Anfitrião encerrou a transmissão.");
-                    });
-                });
-
-                setTimeout(() => {
-                    if (!guestRemoteVideo.srcObject) {
-                        endSession();
-                        showAlert("Erro", "Sala não encontrada.");
-                    }
-                }, 15000);
-
-            } catch (err) {
-                showAlert("Erro", err.message);
-                btnConnectGuest.disabled = false;
-                btnConnectGuest.innerHTML = "Conectar";
-                guestVideoOverlayText.innerHTML = "Insira o ID da Sala para assistir.";
-            }
-        });
-
-        // --- Limpeza e Controles ---
-        btnFullscreen.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                if (guestVideoWrapper.requestFullscreen) guestVideoWrapper.requestFullscreen();
-                else if (guestVideoWrapper.webkitRequestFullscreen) guestVideoWrapper.webkitRequestFullscreen();
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-            }
-        });
-
-        function endSession() {
-            if (statsIntervalId) {
-                clearInterval(statsIntervalId);
-                statsIntervalId = null;
-            }
-
-            if (myPeer) {
-                myPeer.destroy();
-                myPeer = null;
-            }
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-
-            connections = {};
-            currentRoomId = null;
-            lastTotalBytesSent = 0;
-            
-            // Zera as stats
-            statBitrate.innerText = '0 kbps';
-            statTotalData.innerText = '0.0 MB';
-            statFps.innerText = '0';
-            statRes.innerText = '0x0';
-            statMemory.innerText = 'N/A';
-            
-            // Reset UI (Host)
-            hostLocalVideo.srcObject = null;
-            hostLocalVideo.style.display = 'none';
-            hostVideoOverlay.style.display = 'flex';
-            hostSetupContainer.classList.remove('hidden');
-            hostActiveContainer.classList.add('hidden');
-            btnStartHost.disabled = false;
-            btnStartHost.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Iniciar Transmissão`;
-            updateViewerList();
-
-            // Reset UI (Guest)
-            guestRemoteVideo.srcObject = null;
-            guestSetupContainer.classList.remove('hidden');
-            guestActiveContainer.classList.add('hidden');
-            guestVideoOverlay.classList.remove('hidden');
-            guestVideoOverlayText.innerHTML = "Insira o ID da Sala para assistir.";
-            btnFullscreen.classList.add('hidden');
-            guestRoomIdInput.value = '';
-            btnConnectGuest.disabled = false;
-            btnConnectGuest.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Conectar`;
-
-            updateStatusUI('neutral', 'Sessão Encerrada');
-            if(role) switchScreen('home');
         }
 
         window.addEventListener('beforeunload', endSession);
