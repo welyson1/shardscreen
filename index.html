@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Screen Share - Multicast (PeerJS)</title>
+    <title>P2P Screen Share - Multicast Pro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS Library (para Sinalização e Conexão P2P) -->
@@ -18,23 +18,26 @@
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* Ajuste de responsividade: Altura dinâmica sem cortes */
         .video-container {
             position: relative;
             background-color: #000;
             border-radius: 0.75rem;
             overflow: hidden;
-            aspect-ratio: 16 / 9;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
             border: 1px solid #374151;
             display: flex;
             align-items: center;
             justify-content: center;
+            width: 100%;
+            height: 100%;
+            max-height: 80vh; /* Previne que o vídeo passe da altura da tela */
         }
         
         video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: contain; /* Garante que toda a tela apareça sem cortes */
         }
 
         #local-video-preview {
@@ -58,6 +61,12 @@
         :fullscreen #btn-fullscreen-icon-enter { display: none; }
         :fullscreen #btn-fullscreen-icon-exit { display: block; }
         #btn-fullscreen-icon-exit { display: none; }
+        
+        :fullscreen .video-container {
+            max-height: 100vh;
+            border-radius: 0;
+            border: none;
+        }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
@@ -70,8 +79,8 @@
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold leading-tight">P2P Screen Share</h1>
-                    <p class="text-xs text-gray-400">Transmissão para Múltiplos Espectadores (Mesh)</p>
+                    <h1 class="text-lg font-bold leading-tight">P2P Screen Share Pro</h1>
+                    <p class="text-xs text-gray-400">Transmissão Multicast com Estatísticas</p>
                 </div>
             </div>
             <div id="global-status" class="flex items-center gap-2 text-sm font-medium text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700">
@@ -126,16 +135,36 @@
                         <h2 class="text-xl font-bold mb-6">Painel do Anfitrião</h2>
                         
                         <div id="host-setup-container" class="space-y-6 text-center">
-                            <p class="text-sm text-gray-400 mb-4 text-left">Clique abaixo para capturar sua tela e conectar-se à rede de sinalização.</p>
+                            
+                            <!-- Opções de Captura -->
+                            <div class="bg-gray-950 p-4 rounded-lg border border-gray-800 text-left">
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <input type="checkbox" id="cb-audio" class="w-5 h-5 rounded border-gray-700 text-blue-600 focus:ring-blue-600 bg-gray-900 cursor-pointer">
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-200 group-hover:text-white transition">Compartilhar Áudio do Sistema</span>
+                                        <p class="text-xs text-gray-500 mt-0.5">Lembre-se de marcar "Compartilhar áudio" na janela que o navegador abrir.</p>
+                                    </div>
+                                </label>
+                            </div>
+
                             <button id="btn-start-host" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-4 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20 text-lg">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 Iniciar Transmissão
                             </button>
                         </div>
 
-                        <!-- Active State UI (Hidden until connected to PeerJS) -->
+                        <!-- Active State UI -->
                         <div id="host-active-container" class="hidden space-y-5">
                             
+                            <!-- Ações Rápidas -->
+                            <div class="flex gap-2">
+                                <button id="btn-change-screen" class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg border border-gray-700 transition flex justify-center items-center gap-2 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                    Trocar Tela/Aba
+                                </button>
+                            </div>
+
+                            <!-- Room ID -->
                             <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 text-center">
                                 <p class="text-xs text-gray-500 mb-2 uppercase font-semibold tracking-wider">Seu ID de Sala</p>
                                 <div class="flex items-center justify-center gap-3">
@@ -147,15 +176,41 @@
                                 <p class="text-xs text-gray-500 mt-3">Envie este ID para quem for assistir.</p>
                             </div>
 
+                            <!-- Viewers -->
                             <div class="bg-gray-800 rounded-lg p-4">
                                 <div class="flex justify-between items-center mb-2">
                                     <h3 class="text-sm font-medium text-gray-300">Espectadores Conectados</h3>
                                     <span id="host-viewer-count" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
                                 </div>
-                                <ul id="host-viewer-list" class="space-y-1 text-xs text-gray-400 max-h-32 overflow-y-auto">
-                                    <!-- List of connections -->
+                                <ul id="host-viewer-list" class="space-y-1 text-xs text-gray-400 max-h-24 overflow-y-auto">
                                     <li class="text-gray-500 italic py-1">Ninguém conectado ainda.</li>
                                 </ul>
+                            </div>
+
+                            <!-- Estatísticas -->
+                            <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                                <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                    Desempenho (Soma de todos)
+                                </h3>
+                                <div class="grid grid-cols-2 gap-3 text-xs">
+                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
+                                        <p class="text-gray-500 mb-1">Velocidade Upload</p>
+                                        <p id="stat-bitrate" class="font-mono font-bold text-green-400">0 kbps</p>
+                                    </div>
+                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
+                                        <p class="text-gray-500 mb-1">Trafegado (Total)</p>
+                                        <p id="stat-total-data" class="font-mono font-bold text-blue-400">0.0 MB</p>
+                                    </div>
+                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
+                                        <p class="text-gray-500 mb-1">FPS / Resolução</p>
+                                        <p class="font-mono text-gray-300"><span id="stat-fps">0</span> fps | <span id="stat-res">0x0</span></p>
+                                    </div>
+                                    <div class="bg-gray-900 p-2 rounded border border-gray-700">
+                                        <p class="text-gray-500 mb-1">Memória RAM (Aba)</p>
+                                        <p id="stat-memory" class="font-mono text-gray-300">N/A</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -163,7 +218,7 @@
                 
                 <!-- Host Right: Video Area -->
                 <div class="lg:col-span-2 flex flex-col h-full min-h-[400px]">
-                    <div class="video-container flex-grow bg-gray-900 w-full relative">
+                    <div class="video-container bg-gray-900 w-full relative">
                         <!-- Host sees nothing on the main screen unless they are sharing -->
                         <div id="host-video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 z-10">
                             <svg class="w-16 h-16 text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
@@ -173,7 +228,6 @@
                         <!-- My Own Shared Screen (Picture in Picture style for host to confirm) -->
                         <video id="host-local-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain; display:none;"></video>
                     </div>
-                    <p class="text-xs text-gray-500 mt-3 text-center">Nota: Como Anfitrião, a sua tela será enviada individualmente para cada espectador. Isso consome banda de upload.</p>
                 </div>
             </div>
 
@@ -248,31 +302,42 @@
     <script>
         // --- Application State ---
         let role = null; // 'host' or 'guest'
-        let myPeer = null; // Instância do PeerJS
-        let localStream = null; // Mídia da tela do Anfitrião
-        let connections = {}; // Lista de conexões do anfitrião { peerId: MediaConnection }
+        let myPeer = null; 
+        let localStream = null; 
+        let connections = {}; // { peerId: MediaConnection }
         let currentRoomId = null;
+        let statsIntervalId = null;
+
+        // Variaveis de monitoramento de banda
+        let lastTotalBytesSent = 0;
 
         // --- UI Elements ---
         const screenHome = document.getElementById('screen-home');
         const screenHost = document.getElementById('screen-host');
         const screenGuest = document.getElementById('screen-guest');
-
-        // Header Status
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
 
-        // Host Elements
+        // Host
         const hostSetupContainer = document.getElementById('host-setup-container');
         const hostActiveContainer = document.getElementById('host-active-container');
         const btnStartHost = document.getElementById('btn-start-host');
+        const cbAudio = document.getElementById('cb-audio');
+        const btnChangeScreen = document.getElementById('btn-change-screen');
         const hostRoomIdElement = document.getElementById('host-room-id');
         const hostViewerList = document.getElementById('host-viewer-list');
         const hostViewerCount = document.getElementById('host-viewer-count');
         const hostVideoOverlay = document.getElementById('host-video-overlay');
         const hostLocalVideo = document.getElementById('host-local-video');
 
-        // Guest Elements
+        // Stats Elements
+        const statBitrate = document.getElementById('stat-bitrate');
+        const statTotalData = document.getElementById('stat-total-data');
+        const statFps = document.getElementById('stat-fps');
+        const statRes = document.getElementById('stat-res');
+        const statMemory = document.getElementById('stat-memory');
+
+        // Guest
         const guestSetupContainer = document.getElementById('guest-setup-container');
         const guestActiveContainer = document.getElementById('guest-active-container');
         const guestRoomIdInput = document.getElementById('guest-room-id-input');
@@ -285,7 +350,6 @@
 
         // --- Utility Functions ---
         function generateShortId() {
-            // Gera um ID no formato ABC-123
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             const numbers = '0123456789';
             let l = ''; let n = '';
@@ -332,12 +396,9 @@
                 screenGuest.classList.remove('hidden');
                 updateStatusUI('neutral', 'Modo Espectador');
                 role = 'guest';
-                // Auto format input
                 guestRoomIdInput.addEventListener('input', function (e) {
                     let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (val.length > 3) {
-                        val = val.substring(0, 3) + '-' + val.substring(3, 6);
-                    }
+                    if (val.length > 3) val = val.substring(0, 3) + '-' + val.substring(3, 6);
                     e.target.value = val;
                 });
             }
@@ -350,18 +411,15 @@
                 const originalClass = el.className;
                 el.classList.add('bg-green-900/50', 'text-green-400', 'border-green-500');
                 setTimeout(() => { el.className = originalClass; }, 600);
-            }).catch(err => {
-                showAlert("Erro", "Não foi possível copiar automaticamente. Copie manualmente o ID.");
-            });
+            }).catch(err => showAlert("Erro", "Copie o ID manualmente."));
         }
 
-        // --- PeerJS Configuration ---
-        // Usamos um prefixo para isolar nossos IDs na rede pública do PeerJS
+        // --- PeerJS / WebRTC ---
         const APP_PREFIX = 'P2P-PRO-V1-'; 
 
         function initializePeer(id = null) {
             const peerOptions = {
-                debug: 2,
+                debug: 1,
                 config: {
                     'iceServers': [
                         { urls: 'stun:stun.l.google.com:19302' },
@@ -370,28 +428,18 @@
                 }
             };
             
-            if (id) {
-                myPeer = new Peer(APP_PREFIX + id, peerOptions);
-            } else {
-                myPeer = new Peer(peerOptions); // Deixa o PeerJS gerar ID pro Guest
-            }
+            myPeer = id ? new Peer(APP_PREFIX + id, peerOptions) : new Peer(peerOptions);
 
             return new Promise((resolve, reject) => {
-                myPeer.on('open', (assignedId) => {
-                    resolve(assignedId);
-                });
+                myPeer.on('open', resolve);
                 myPeer.on('error', (err) => {
-                    console.error("PeerJS Error:", err);
-                    if(err.type === 'unavailable-id') {
-                        reject(new Error("Este ID já está em uso. Tente novamente."));
-                    } else {
-                        reject(new Error("Falha ao conectar aos servidores de sinalização."));
-                    }
+                    if(err.type === 'unavailable-id') reject(new Error("ID em uso. Tente novamente."));
+                    else reject(new Error("Falha ao conectar aos servidores."));
                 });
             });
         }
 
-        // --- Host Logic ---
+        // --- Host Engine ---
         function updateViewerList() {
             const ids = Object.keys(connections);
             hostViewerCount.innerText = ids.length;
@@ -416,69 +464,120 @@
             });
         }
 
+        // Lógica de Estatísticas do Anfitrião
+        async function calculateStats() {
+            if (Object.keys(connections).length === 0) {
+                statBitrate.innerText = '0 kbps';
+                statFps.innerText = '0';
+                statRes.innerText = '0x0';
+                return;
+            }
+
+            let currentTotalBytes = 0;
+            let currentFps = 0;
+            let currentWidth = 0;
+            let currentHeight = 0;
+
+            // Percorre todas as conexões P2P ativas
+            for (const peerId in connections) {
+                const conn = connections[peerId];
+                if (!conn.peerConnection) continue;
+
+                try {
+                    const stats = await conn.peerConnection.getStats();
+                    stats.forEach(report => {
+                        // Captura dados do Vídeo enviado
+                        if (report.type === 'outbound-rtp' && report.kind === 'video') {
+                            currentTotalBytes += report.bytesSent || 0;
+                            if (report.framesPerSecond) currentFps = report.framesPerSecond;
+                            if (report.frameWidth) currentWidth = report.frameWidth;
+                            if (report.frameHeight) currentHeight = report.frameHeight;
+                        }
+                        // Captura dados do Áudio enviado
+                        if (report.type === 'outbound-rtp' && report.kind === 'audio') {
+                            currentTotalBytes += report.bytesSent || 0;
+                        }
+                    });
+                } catch (e) { /* Ignorar peers fechando */ }
+            }
+
+            // Cálculo de Banda em Tempo Real
+            if (lastTotalBytesSent > 0) {
+                const bytesInOneSecond = currentTotalBytes - lastTotalBytesSent;
+                const kbps = (bytesInOneSecond * 8) / 1000; // Converte bytes/s para kilobits/s
+                statBitrate.innerText = `${kbps.toFixed(0)} kbps`;
+            }
+            lastTotalBytesSent = currentTotalBytes;
+            
+            // Dados Acumulados e Resolução
+            const mbTotal = currentTotalBytes / (1024 * 1024);
+            statTotalData.innerText = `${mbTotal.toFixed(1)} MB`;
+            statFps.innerText = currentFps > 0 ? Math.round(currentFps) : 0;
+            statRes.innerText = currentWidth > 0 ? `${currentWidth}x${currentHeight}` : '0x0';
+
+            // Memória RAM da Aba (Funciona em navegadores baseados no Chromium como Chrome/Edge/Opera)
+            if (performance && performance.memory) {
+                const memMb = performance.memory.usedJSHeapSize / (1024 * 1024);
+                statMemory.innerText = `${memMb.toFixed(1)} MB`;
+            } else {
+                statMemory.innerText = 'N/A';
+            }
+        }
+
         btnStartHost.addEventListener('click', async () => {
             btnStartHost.disabled = true;
-            btnStartHost.innerHTML = "Solicitando permissão da tela...";
+            btnStartHost.innerHTML = "Solicitando tela...";
             
             try {
-                // 1. Obter mídia local
+                // Captura Tela (com ou sem áudio conforme Checkbox)
+                const shareAudio = cbAudio.checked;
                 localStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { cursor: "always" },
-                    audio: false // Para compartilhar o som do sistema, mude para true
+                    audio: shareAudio
                 });
                 
-                // Mostrar preview para o host
                 hostLocalVideo.srcObject = localStream;
                 hostLocalVideo.style.display = 'block';
                 hostVideoOverlay.style.display = 'none';
 
-                // Lidar com botão "Parar Compartilhamento" do navegador
                 localStream.getVideoTracks()[0].onended = () => {
-                    showAlert("Aviso", "Transmissão da tela encerrada.");
+                    showAlert("Aviso", "Transmissão encerrada.");
                     endSession();
                 };
 
                 btnStartHost.innerHTML = "Criando Sala...";
 
-                // 2. Conectar à rede PeerJS com ID Fixo
+                // Inicializa Peer
                 currentRoomId = generateShortId();
                 await initializePeer(currentRoomId);
                 
-                // 3. Configurar UI Ativa
+                // Atualiza UI
                 hostRoomIdElement.innerText = currentRoomId;
                 hostSetupContainer.classList.add('hidden');
                 hostActiveContainer.classList.remove('hidden');
                 updateStatusUI('waiting', 'Transmitindo e Aguardando');
 
-                // 4. Aguardar conexões recebidas (Bater na porta)
+                // Inicia loop de estatísticas a cada 1 segundo
+                statsIntervalId = setInterval(calculateStats, 1000);
+
+                // Escuta quem entrar na sala
                 myPeer.on('connection', (conn) => {
-                    console.log("Novo espectador conectou na sala: ", conn.peer);
-                    
                     conn.on('open', () => {
-                        // Quando o espectador bate na porta, o anfitrião LIGA pra ele com o vídeo
                         if (localStream) {
-                            console.log("Enviando stream de tela para: ", conn.peer);
                             const call = myPeer.call(conn.peer, localStream);
-                            
-                            // Salvar conexão ativa
                             connections[conn.peer] = call;
                             updateViewerList();
 
                             call.on('close', () => {
-                                console.log("Espectador desconectou: ", call.peer);
                                 delete connections[conn.peer];
                                 updateViewerList();
                             });
-                            
-                            call.on('error', (err) => {
-                                console.error("Erro na chamada: ", err);
+                            call.on('error', () => {
                                 delete connections[conn.peer];
                                 updateViewerList();
                             });
                         }
                     });
-
-                    // Limpeza se a conexão de dados cair
                     conn.on('close', () => {
                         if(connections[conn.peer]) {
                             connections[conn.peer].close();
@@ -492,11 +591,59 @@
                 console.error(err);
                 showAlert("Erro", err.message || "Permissão de tela negada.");
                 btnStartHost.disabled = false;
-                btnStartHost.innerHTML = "Iniciar Transmissão";
+                btnStartHost.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Iniciar Transmissão`;
             }
         });
 
-        // --- Guest Logic ---
+        // Ação: Mudar Tela/Aba em Tempo Real
+        btnChangeScreen.addEventListener('click', async () => {
+            try {
+                // Solicita nova tela mantendo a configuração de áudio original
+                const shareAudio = cbAudio.checked;
+                const newStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: shareAudio
+                });
+
+                // Atualiza visualização local
+                hostLocalVideo.srcObject = newStream;
+                
+                const newVideoTrack = newStream.getVideoTracks()[0];
+                const newAudioTrack = newStream.getAudioTracks()[0];
+
+                newVideoTrack.onended = () => {
+                    showAlert("Aviso", "Transmissão encerrada.");
+                    endSession();
+                };
+
+                // Troca a trilha (ReplaceTrack) em todas as conexões P2P ativas
+                for (const peerId in connections) {
+                    const call = connections[peerId];
+                    if (call.peerConnection) {
+                        const senders = call.peerConnection.getSenders();
+                        
+                        // Troca o vídeo
+                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                        if (videoSender && newVideoTrack) videoSender.replaceTrack(newVideoTrack);
+
+                        // Troca o áudio (se houver e o usuário optou por áudio no início)
+                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                        if (audioSender && newAudioTrack) {
+                            audioSender.replaceTrack(newAudioTrack);
+                        }
+                    }
+                }
+                
+                // Atualiza a referência master
+                localStream = newStream;
+                showAlert("Sucesso", "Tela/Aba atualizada para todos os espectadores!");
+
+            } catch (err) {
+                console.error("Troca cancelada:", err);
+            }
+        });
+
+        // --- Guest Engine ---
         btnConnectGuest.addEventListener('click', async () => {
             const rawId = guestRoomIdInput.value.trim();
             if (rawId.length !== 7 || !rawId.includes('-')) {
@@ -506,36 +653,26 @@
 
             const targetPeerId = APP_PREFIX + rawId;
             btnConnectGuest.disabled = true;
-            btnConnectGuest.innerHTML = "Conectando ao servidor...";
-            guestVideoOverlayText.innerHTML = `<svg class="w-8 h-8 animate-spin mx-auto mb-2 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Localizando Sala...`;
+            btnConnectGuest.innerHTML = "Conectando...";
+            guestVideoOverlayText.innerHTML = "Localizando Sala...";
 
             try {
-                // 1. Conectar à rede com ID dinâmico
                 await initializePeer();
                 
-                // 2. Avisar o anfitrião que chegamos (Bater na porta via dados)
-                btnConnectGuest.innerHTML = "Avisando anfitrião...";
                 guestVideoOverlayText.innerHTML = "Negociando entrada na sala...";
-                
                 const conn = myPeer.connect(targetPeerId);
 
                 conn.on('open', () => {
-                    console.log("Conectado à sala. Aguardando transmissão...");
-                    guestVideoOverlayText.innerHTML = "Sala encontrada. Aguardando o vídeo...";
+                    guestVideoOverlayText.innerHTML = "Aguardando o vídeo...";
                 });
 
-                // 3. Receber a "Ligação" de volta do Anfitrião com a Mídia
+                // Atende a chamada do anfitrião
                 myPeer.on('call', (call) => {
-                    console.log("Recebendo transmissão do anfitrião!");
+                    call.answer(); // Responde vazio
                     
-                    // Atende a chamada SEM enviar vídeo de volta (somos espectador)
-                    call.answer();
-
                     call.on('stream', (remoteStream) => {
-                        console.log("Vídeo P2P conectado!");
                         guestRemoteVideo.srcObject = remoteStream;
                         
-                        // Atualiza a UX
                         guestSetupContainer.classList.add('hidden');
                         guestActiveContainer.classList.remove('hidden');
                         guestVideoOverlay.classList.add('hidden');
@@ -547,24 +684,16 @@
                         endSession();
                         showAlert("Aviso", "O Anfitrião encerrou a transmissão.");
                     });
-
-                    call.on('error', (err) => {
-                        console.error("Call error", err);
-                        endSession();
-                        showAlert("Erro", "A conexão de vídeo falhou ou foi rejeitada.");
-                    });
                 });
 
-                // timeout de segurança caso a sala não exista
                 setTimeout(() => {
                     if (!guestRemoteVideo.srcObject) {
                         endSession();
-                        showAlert("Erro", "Sala não encontrada ou não está transmitindo no momento.");
+                        showAlert("Erro", "Sala não encontrada.");
                     }
-                }, 15000); // 15s limite para o stream chegar
+                }, 15000);
 
             } catch (err) {
-                console.error(err);
                 showAlert("Erro", err.message);
                 btnConnectGuest.disabled = false;
                 btnConnectGuest.innerHTML = "Conectar";
@@ -572,29 +701,26 @@
             }
         });
 
-        // --- Fullscreen and Cleanup ---
+        // --- Limpeza e Controles ---
         btnFullscreen.addEventListener('click', () => {
             if (!document.fullscreenElement) {
-                if (guestVideoWrapper.requestFullscreen) {
-                    guestVideoWrapper.requestFullscreen();
-                } else if (guestVideoWrapper.webkitRequestFullscreen) {
-                    guestVideoWrapper.webkitRequestFullscreen();
-                }
+                if (guestVideoWrapper.requestFullscreen) guestVideoWrapper.requestFullscreen();
+                else if (guestVideoWrapper.webkitRequestFullscreen) guestVideoWrapper.webkitRequestFullscreen();
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
+                if (document.exitFullscreen) document.exitFullscreen();
             }
         });
 
         function endSession() {
-            // Fechar PeerJS
+            if (statsIntervalId) {
+                clearInterval(statsIntervalId);
+                statsIntervalId = null;
+            }
+
             if (myPeer) {
                 myPeer.destroy();
                 myPeer = null;
             }
-            
-            // Parar mídia local
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
@@ -602,8 +728,16 @@
 
             connections = {};
             currentRoomId = null;
+            lastTotalBytesSent = 0;
             
-            // Reset Host UI
+            // Zera as stats
+            statBitrate.innerText = '0 kbps';
+            statTotalData.innerText = '0.0 MB';
+            statFps.innerText = '0';
+            statRes.innerText = '0x0';
+            statMemory.innerText = 'N/A';
+            
+            // Reset UI (Host)
             hostLocalVideo.srcObject = null;
             hostLocalVideo.style.display = 'none';
             hostVideoOverlay.style.display = 'flex';
@@ -613,7 +747,7 @@
             btnStartHost.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Iniciar Transmissão`;
             updateViewerList();
 
-            // Reset Guest UI
+            // Reset UI (Guest)
             guestRemoteVideo.srcObject = null;
             guestSetupContainer.classList.remove('hidden');
             guestActiveContainer.classList.add('hidden');
@@ -628,9 +762,7 @@
             if(role) switchScreen('home');
         }
 
-        window.addEventListener('beforeunload', () => {
-            endSession();
-        });
+        window.addEventListener('beforeunload', endSession);
 
     </script>
 </body>
