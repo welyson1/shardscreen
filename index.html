@@ -388,12 +388,6 @@
                     remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
                 }
                 
-                // UX de sucesso para o Convidado
-                guestVideoOverlay.classList.add('hidden');
-                guestSetupContainer.classList.add('hidden'); // Oculta caixas de texto
-                btnFullscreen.classList.remove('hidden');    // Mostra botão de tela cheia
-                updateStatusUI('connected', 'Assistindo Tela');
-
                 event.track.onended = () => {
                      guestVideoOverlay.classList.remove('hidden');
                      guestVideoOverlayText.innerText = "A transmissão foi encerrada pelo anfitrião.";
@@ -409,6 +403,12 @@
                         hostSetupContainer.classList.add('hidden');
                         hostActiveContainer.classList.remove('hidden');
                         updateStatusUI('connected', 'Transmissão Ativa');
+                    } else {
+                        // Convidado: Oculta caixas e exibe vídeo APENAS QUANDO CONECTADO
+                        guestVideoOverlay.classList.add('hidden');
+                        guestSetupContainer.classList.add('hidden'); 
+                        btnFullscreen.classList.remove('hidden');    
+                        updateStatusUI('connected', 'Assistindo Tela');
                     }
                 } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                     showAlert("Erro", "A conexão P2P foi perdida.");
@@ -424,6 +424,9 @@
                     iceTimeoutTimer = setTimeout(() => {
                         if (peerConnection.iceGatheringState !== 'complete') finalizeIceGathering();
                     }, 3000); // 3 segundos de tolerância para achar todas as rotas
+                } else {
+                    // Finaliza a geração automaticamente se o navegador indicar fim (null)
+                    finalizeIceGathering();
                 }
             };
 
