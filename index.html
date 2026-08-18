@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Screen Share - UX Pro</title>
+    <title>P2P Screen Share - Multicast (PeerJS)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS Library (para Sinalização e Conexão P2P) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
     <style>
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; }
@@ -22,6 +26,9 @@
             aspect-ratio: 16 / 9;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
             border: 1px solid #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         video {
@@ -29,12 +36,27 @@
             height: 100%;
             object-fit: contain;
         }
+
+        #local-video-preview {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            width: 25%;
+            min-width: 150px;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            border: 2px solid #3b82f6;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            background-color: #111827;
+            z-index: 20;
+            display: none;
+        }
         
-        /* Ocultar elementos quando em tela cheia */
+        /* Fullscreen styles */
         :fullscreen #btn-fullscreen-text { display: none; }
         :fullscreen #btn-fullscreen-icon-enter { display: none; }
         :fullscreen #btn-fullscreen-icon-exit { display: block; }
-        
         #btn-fullscreen-icon-exit { display: none; }
     </style>
 </head>
@@ -42,14 +64,14 @@
 
     <!-- Header -->
     <header class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="bg-blue-600 p-2 rounded-lg">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 </div>
                 <div>
                     <h1 class="text-lg font-bold leading-tight">P2P Screen Share</h1>
-                    <p class="text-xs text-gray-400">Conexão Direta E2EE</p>
+                    <p class="text-xs text-gray-400">Transmissão para Múltiplos Espectadores (Mesh)</p>
                 </div>
             </div>
             <div id="global-status" class="flex items-center gap-2 text-sm font-medium text-gray-500 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700">
@@ -60,13 +82,13 @@
     </header>
 
     <main class="flex-grow flex items-center justify-center p-4">
-        <div class="max-w-5xl w-full mx-auto relative">
+        <div class="max-w-6xl w-full mx-auto relative">
 
             <!-- ================= SCREEN 1: HOME (CHOICE) ================= -->
             <div id="screen-home" class="fade-in max-w-2xl mx-auto text-center space-y-8 py-12">
                 <div class="space-y-4">
-                    <h2 class="text-4xl font-extrabold tracking-tight">O que você deseja fazer?</h2>
-                    <p class="text-gray-400 text-lg">Escolha uma das opções abaixo para iniciar uma conexão segura, direta e sem servidores intermediários.</p>
+                    <h2 class="text-4xl font-extrabold tracking-tight">Como você quer se conectar?</h2>
+                    <p class="text-gray-400 text-lg">Escolha se deseja compartilhar sua tela com várias pessoas ou assistir a transmissão de alguém usando um ID curto.</p>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
@@ -75,8 +97,8 @@
                         <div class="bg-blue-500/10 text-blue-500 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
                             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                         </div>
-                        <h3 class="text-xl font-bold mb-2">Compartilhar Tela</h3>
-                        <p class="text-sm text-gray-400 text-center">Transmita sua tela para um colega. Você precisará gerar e enviar o convite.</p>
+                        <h3 class="text-xl font-bold mb-2">Criar Sala (Transmitir)</h3>
+                        <p class="text-sm text-gray-400 text-center">Inicie o compartilhamento da sua tela e gere um ID de Sala para convidar pessoas.</p>
                     </button>
 
                     <!-- Guest Button -->
@@ -84,183 +106,131 @@
                         <div class="bg-purple-500/10 text-purple-400 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
                             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         </div>
-                        <h3 class="text-xl font-bold mb-2">Assistir</h3>
-                        <p class="text-sm text-gray-400 text-center">Veja a tela de outra pessoa. Você precisará do código de convite dela.</p>
+                        <h3 class="text-xl font-bold mb-2">Entrar na Sala (Assistir)</h3>
+                        <p class="text-sm text-gray-400 text-center">Assista à tela de um Anfitrião usando o ID Curto que ele te enviar.</p>
                     </button>
                 </div>
             </div>
 
             <!-- ================= SCREEN 2: HOST (SHARE) ================= -->
-            <div id="screen-host" class="hidden fade-in grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div id="screen-host" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 <!-- Host Left: Controls -->
-                <div class="space-y-6">
+                <div class="lg:col-span-1 space-y-6">
                     <button onclick="switchScreen('home')" class="flex items-center gap-2 text-gray-400 hover:text-white transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Voltar
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Voltar / Encerrar
                     </button>
                     
                     <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl relative overflow-hidden">
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400"></div>
-                        <h2 class="text-2xl font-bold mb-6">Modo Transmissor</h2>
+                        <h2 class="text-xl font-bold mb-6">Painel do Anfitrião</h2>
                         
-                        <div id="host-setup-container" class="space-y-6">
-                            <!-- Step 1 -->
-                            <div>
-                                <div class="flex justify-between items-end mb-2">
-                                    <label class="block text-sm font-medium text-gray-300">1. Gere o convite de conexão</label>
-                                </div>
-
-                                <label class="flex items-center gap-1.5 text-xs font-medium text-gray-400 mb-1.5">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                    Senha de proteção (opcional, recomendada)
-                                </label>
-                                <input type="text" id="host-passphrase" autocomplete="off" class="w-full text-sm bg-gray-950 border border-gray-800 rounded-lg p-2.5 mb-3 text-white focus:outline-none focus:border-blue-500 transition placeholder-gray-600" placeholder="Combine uma senha com seu convidado por outro canal">
-
-                                <button id="btn-generate-offer" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                    Selecionar Tela e Gerar Convite
-                                </button>
-                                <div class="relative mt-3">
-                                    <textarea id="host-invite-text" readonly class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-gray-400 focus:outline-none resize-none" placeholder="O código do convite aparecerá aqui..."></textarea>
-                                    <div class="absolute bottom-3 right-3 flex gap-2">
-                                        <button onclick="shareText(document.getElementById('host-invite-text').value)" class="btn-share bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Compartilhar Convite">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-                                        </button>
-                                        <button onclick="copyToClipboard('host-invite-text')" class="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Copiar Convite">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Step 2 -->
-                            <div class="pt-4 border-t border-gray-800">
-                                <label class="block text-sm font-medium text-gray-300 mb-2">2. Cole a resposta do seu convidado</label>
-                                <div class="relative">
-                                    <textarea id="host-paste-answer" class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition resize-none placeholder-gray-600" placeholder="Cole o código que seu amigo te enviar de volta..."></textarea>
-                                    <button onclick="pasteFromClipboard('host-paste-answer')" class="absolute bottom-3 right-3 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Colar da área de transferência">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                    </button>
-                                </div>
-                                <button id="btn-connect-host" class="w-full mt-3 bg-green-600 hover:bg-green-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-green-900/20">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Iniciar Transmissão
-                                </button>
-                            </div>
+                        <div id="host-setup-container" class="space-y-6 text-center">
+                            <p class="text-sm text-gray-400 mb-4 text-left">Clique abaixo para capturar sua tela e conectar-se à rede de sinalização.</p>
+                            <button id="btn-start-host" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-4 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20 text-lg">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Iniciar Transmissão
+                            </button>
                         </div>
 
-                        <!-- Active State UI (Hidden until connected) -->
-                        <div id="host-active-container" class="hidden space-y-6 text-center py-6">
-                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 text-green-400 mb-4">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <!-- Active State UI (Hidden until connected to PeerJS) -->
+                        <div id="host-active-container" class="hidden space-y-5">
+                            
+                            <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 text-center">
+                                <p class="text-xs text-gray-500 mb-2 uppercase font-semibold tracking-wider">Seu ID de Sala</p>
+                                <div class="flex items-center justify-center gap-3">
+                                    <span id="host-room-id" class="text-3xl font-mono font-bold text-blue-400 tracking-widest bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-500/30">------</span>
+                                    <button onclick="copyRoomId()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-lg text-gray-300 transition" title="Copiar ID">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-3">Envie este ID para quem for assistir.</p>
                             </div>
-                            <h3 class="text-xl font-bold text-white">Transmissão Ativa</h3>
-                            <p class="text-sm text-gray-400">Sua tela está sendo compartilhada com segurança.</p>
-                            <div class="bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 inline-block">
-                                <p class="text-xs text-gray-500 mb-1">Código de verificação (compare com o convidado)</p>
-                                <p id="host-verification-code" class="text-lg font-mono font-bold text-blue-400 tracking-widest">------</p>
+
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="text-sm font-medium text-gray-300">Espectadores Conectados</h3>
+                                    <span id="host-viewer-count" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                                </div>
+                                <ul id="host-viewer-list" class="space-y-1 text-xs text-gray-400 max-h-32 overflow-y-auto">
+                                    <!-- List of connections -->
+                                    <li class="text-gray-500 italic py-1">Ninguém conectado ainda.</li>
+                                </ul>
                             </div>
-                            <button onclick="endSession()" class="w-full bg-red-600 hover:bg-red-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 mt-4">
-                                Parar Compartilhamento
-                            </button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Host Right: Local Preview -->
-                <div class="flex flex-col h-full">
-                    <h3 class="text-sm font-medium text-gray-400 mb-3 ml-1">Pré-visualização da sua tela</h3>
-                    <div class="video-container flex-grow bg-gray-900">
-                        <video id="local-video-preview" autoplay playsinline muted></video>
+                <!-- Host Right: Video Area -->
+                <div class="lg:col-span-2 flex flex-col h-full min-h-[400px]">
+                    <div class="video-container flex-grow bg-gray-900 w-full relative">
+                        <!-- Host sees nothing on the main screen unless they are sharing -->
                         <div id="host-video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 z-10">
-                            <svg class="w-12 h-12 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                            <p class="text-sm text-gray-500">Nenhuma tela selecionada</p>
+                            <svg class="w-16 h-16 text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            <p class="text-lg text-gray-500">Transmissão Não Iniciada</p>
                         </div>
+                        
+                        <!-- My Own Shared Screen (Picture in Picture style for host to confirm) -->
+                        <video id="host-local-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain; display:none;"></video>
                     </div>
+                    <p class="text-xs text-gray-500 mt-3 text-center">Nota: Como Anfitrião, a sua tela será enviada individualmente para cada espectador. Isso consome banda de upload.</p>
                 </div>
             </div>
 
             <!-- ================= SCREEN 3: GUEST (WATCH) ================= -->
-            <div id="screen-guest" class="hidden fade-in flex flex-col gap-6">
+            <div id="screen-guest" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                <div class="flex justify-between items-center">
+                <!-- Guest Left: Controls -->
+                <div class="lg:col-span-1 space-y-6">
                     <button onclick="switchScreen('home')" class="flex items-center gap-2 text-gray-400 hover:text-white transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Voltar
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Voltar / Sair
                     </button>
-                    <div class="text-sm text-purple-400 font-medium px-3 py-1 bg-purple-500/10 rounded-full border border-purple-500/20">Modo Espectador</div>
-                </div>
+                    
+                    <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500"></div>
+                        <h2 class="text-xl font-bold mb-6">Entrar na Sala</h2>
+                        
+                        <div id="guest-setup-container" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">ID da Sala do Anfitrião</label>
+                                <input type="text" id="guest-room-id-input" class="w-full text-center text-2xl tracking-widest font-mono font-bold bg-gray-950 border border-gray-700 rounded-lg p-3 text-purple-400 focus:outline-none focus:border-purple-500 transition placeholder-gray-700 uppercase" placeholder="ABC-123" maxlength="7">
+                            </div>
+                            
+                            <button id="btn-connect-guest" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-3 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-purple-900/20">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                Conectar
+                            </button>
+                        </div>
 
-                <div id="guest-verification-row" class="hidden justify-center">
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 inline-block text-center">
-                        <p class="text-xs text-gray-500 mb-1">Código de verificação (compare com o anfitrião)</p>
-                        <p id="guest-verification-code" class="text-lg font-mono font-bold text-purple-400 tracking-widest">------</p>
+                        <!-- Guest Connected State -->
+                        <div id="guest-active-container" class="hidden space-y-4 text-center py-4">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 text-green-400 mb-2">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-white">Conectado à Sala</h3>
+                            <p class="text-sm text-gray-400">Recebendo transmissão do anfitrião.</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Guest Setup Container -->
-                <div id="guest-setup-container" class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl mx-auto w-full max-w-2xl relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-500"></div>
-                    <h2 class="text-xl font-bold mb-6 text-center">Conectar ao Anfitrião</h2>
-                    
-                    <div class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">1. Cole o Convite do Anfitrião</label>
-                            <div class="relative">
-                                <textarea id="guest-paste-offer" class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 transition resize-none placeholder-gray-600" placeholder="Cole aqui o código que seu amigo mandou..."></textarea>
-                                <button onclick="pasteFromClipboard('guest-paste-offer')" class="absolute bottom-3 right-3 bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Colar da área de transferência">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                </button>
-                            </div>
+                <!-- Guest Right: Video Player -->
+                <div class="lg:col-span-2 flex flex-col h-full min-h-[400px]">
+                    <div id="guest-video-wrapper" class="video-container shadow-2xl bg-gray-950 w-full relative group h-full">
+                        <video id="guest-remote-video" autoplay playsinline></video>
+                        
+                        <!-- Overlay Waiting Message -->
+                        <div id="guest-video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 z-10 backdrop-blur-sm transition-opacity duration-300">
+                            <svg class="w-16 h-16 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <p id="guest-video-overlay-text" class="text-lg text-gray-400 text-center px-4 font-medium">Insira o ID da Sala para assistir.</p>
                         </div>
 
-                        <div>
-                            <label class="flex items-center gap-1.5 text-xs font-medium text-gray-400 mb-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                Senha de proteção (se o anfitrião definiu uma)
-                            </label>
-                            <input type="text" id="guest-passphrase" autocomplete="off" class="w-full text-sm bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 transition placeholder-gray-600" placeholder="Peça a senha ao anfitrião, se houver">
-                        </div>
-                        
-                        <button id="btn-generate-answer" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-3 px-4 rounded-xl transition shadow-lg shadow-purple-900/20">
-                            2. Processar e Gerar Resposta
+                        <!-- Fullscreen Button -->
+                        <button id="btn-fullscreen" class="absolute bottom-4 right-4 bg-black/60 hover:bg-black/80 text-white p-3 rounded-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md hidden">
+                            <svg id="btn-fullscreen-icon-enter" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                            <svg id="btn-fullscreen-icon-exit" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4m0-4l-5 5m11-5h4v4m0-4l-5 5M4 10h4V6m0 4l-5-5m11 5h4V6m0 4l-5-5"></path></svg>
                         </button>
-                        
-                        <div class="pt-2">
-                            <label class="block text-sm font-medium text-gray-300 mb-2">3. Devolva esta resposta</label>
-                            <div class="relative">
-                                <textarea id="guest-answer-text" readonly class="w-full h-20 text-xs bg-gray-950 border border-gray-800 rounded-lg p-3 text-gray-400 focus:outline-none resize-none" placeholder="Aguarde a geração da resposta..."></textarea>
-                                <div class="absolute bottom-3 right-3 flex gap-2">
-                                    <button onclick="shareText(document.getElementById('guest-answer-text').value)" class="btn-share bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Compartilhar Resposta">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-                                    </button>
-                                    <button onclick="copyToClipboard('guest-answer-text')" class="bg-gray-800 hover:bg-gray-700 p-2 rounded-lg text-gray-300 transition" title="Copiar Resposta">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
-
-                <!-- Guest Video Player -->
-                <div id="guest-video-wrapper" class="video-container shadow-2xl bg-gray-950 w-full mt-2 relative group">
-                    <video id="remote-video" autoplay playsinline></video>
-                    
-                    <!-- Overlay Waiting Message -->
-                    <div id="guest-video-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 z-10 backdrop-blur-sm transition-opacity duration-300">
-                        <svg class="w-16 h-16 text-gray-600 mb-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        <p id="guest-video-overlay-text" class="text-lg text-gray-400 text-center px-4 font-medium">Conclua os passos acima para ver a tela.</p>
-                    </div>
-
-                    <!-- Fullscreen Button (Overlaid on video) -->
-                    <button id="btn-fullscreen" class="absolute bottom-4 right-4 bg-black/60 hover:bg-black/80 text-white p-3 rounded-lg z-20 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md hidden">
-                        <!-- Enter Fullscreen Icon -->
-                        <svg id="btn-fullscreen-icon-enter" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                        <!-- Exit Fullscreen Icon (Hidden by default via CSS) -->
-                        <svg id="btn-fullscreen-icon-exit" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4m0-4l-5 5m11-5h4v4m0-4l-5 5M4 10h4V6m0 4l-5-5m11 5h4V6m0 4l-5-5"></path></svg>
-                    </button>
-                </div>
-
             </div>
 
         </div>
@@ -275,108 +245,53 @@
         </div>
     </div>
 
-    <!-- Hidden Logs for debugging purposes only if needed -->
-    <div id="logs-container" class="hidden"></div>
-
     <script>
-        // --- Aplicação e Estado ---
-        let role = null;
-        let peerConnection = null;
-        let localStream = null;
-        let iceGatheringFinalized = false;
-        let iceTimeoutTimer = null;
+        // --- Application State ---
+        let role = null; // 'host' or 'guest'
+        let myPeer = null; // Instância do PeerJS
+        let localStream = null; // Mídia da tela do Anfitrião
+        let connections = {}; // Lista de conexões do anfitrião { peerId: MediaConnection }
+        let currentRoomId = null;
 
-        // --- Elementos de UI ---
+        // --- UI Elements ---
         const screenHome = document.getElementById('screen-home');
         const screenHost = document.getElementById('screen-host');
         const screenGuest = document.getElementById('screen-guest');
-
-        // Host Elements
-        const hostSetupContainer = document.getElementById('host-setup-container');
-        const hostActiveContainer = document.getElementById('host-active-container');
-        const btnGenerateOffer = document.getElementById('btn-generate-offer');
-        const hostInviteText = document.getElementById('host-invite-text');
-        const hostPasteAnswer = document.getElementById('host-paste-answer');
-        const btnConnectHost = document.getElementById('btn-connect-host');
-        const localVideoPreview = document.getElementById('local-video-preview');
-        const hostVideoOverlay = document.getElementById('host-video-overlay');
-        const hostPassphrase = document.getElementById('host-passphrase');
-        const hostVerificationCode = document.getElementById('host-verification-code');
-
-        // Guest Elements
-        const guestSetupContainer = document.getElementById('guest-setup-container');
-        const guestPasteOffer = document.getElementById('guest-paste-offer');
-        const guestPassphrase = document.getElementById('guest-passphrase');
-        const guestVerificationRow = document.getElementById('guest-verification-row');
-        const guestVerificationCode = document.getElementById('guest-verification-code');
-        const btnGenerateAnswer = document.getElementById('btn-generate-answer');
-        const guestAnswerText = document.getElementById('guest-answer-text');
-        const remoteVideo = document.getElementById('remote-video');
-        const guestVideoOverlay = document.getElementById('guest-video-overlay');
-        const guestVideoOverlayText = document.getElementById('guest-video-overlay-text');
-        const guestVideoWrapper = document.getElementById('guest-video-wrapper');
-        const btnFullscreen = document.getElementById('btn-fullscreen');
 
         // Header Status
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
 
-        // --- Configurações WebRTC (Padrão Funcional) ---
-        const webrtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                {
-                    urls: "turn:openrelay.metered.ca:80",
-                    username: "openrelayproject",
-                    credential: "openrelayproject"
-                },
-                {
-                    urls: "turn:openrelay.metered.ca:443",
-                    username: "openrelayproject",
-                    credential: "openrelayproject"
-                }
-            ]
-        };
+        // Host Elements
+        const hostSetupContainer = document.getElementById('host-setup-container');
+        const hostActiveContainer = document.getElementById('host-active-container');
+        const btnStartHost = document.getElementById('btn-start-host');
+        const hostRoomIdElement = document.getElementById('host-room-id');
+        const hostViewerList = document.getElementById('host-viewer-list');
+        const hostViewerCount = document.getElementById('host-viewer-count');
+        const hostVideoOverlay = document.getElementById('host-video-overlay');
+        const hostLocalVideo = document.getElementById('host-local-video');
 
-        // Oculta os botões de "Compartilhar" em navegadores sem suporte à Web Share API
-        if (!navigator.share) {
-            document.querySelectorAll('.btn-share').forEach(btn => btn.classList.add('hidden'));
-        }
+        // Guest Elements
+        const guestSetupContainer = document.getElementById('guest-setup-container');
+        const guestActiveContainer = document.getElementById('guest-active-container');
+        const guestRoomIdInput = document.getElementById('guest-room-id-input');
+        const btnConnectGuest = document.getElementById('btn-connect-guest');
+        const guestRemoteVideo = document.getElementById('guest-remote-video');
+        const guestVideoOverlay = document.getElementById('guest-video-overlay');
+        const guestVideoOverlayText = document.getElementById('guest-video-overlay-text');
+        const guestVideoWrapper = document.getElementById('guest-video-wrapper');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
 
-        // --- Funções de Interface ---
-        function switchScreen(target) {
-            if (target === 'home') {
-                endSession();
-            }
-
-            screenHome.classList.add('hidden');
-            screenHost.classList.add('hidden');
-            screenGuest.classList.add('hidden');
-
-            if (target === 'home') {
-                screenHome.classList.remove('hidden');
-                updateStatusUI('neutral', 'Aguardando Ação');
-                role = null;
-            } else if (target === 'host') {
-                screenHost.classList.remove('hidden');
-                updateStatusUI('waiting', 'Preparando Transmissão');
-                role = 'host';
-            } else if (target === 'guest') {
-                screenGuest.classList.remove('hidden');
-                updateStatusUI('waiting', 'Aguardando Convite');
-                role = 'guest';
-            }
-        }
-
-        function updateStatusUI(state, text) {
-            statusText.innerText = text;
-            statusDot.className = 'w-2.5 h-2.5 rounded-full';
-            
-            if (state === 'neutral') statusDot.classList.add('bg-gray-500');
-            if (state === 'waiting') statusDot.classList.add('bg-yellow-400', 'animate-pulse');
-            if (state === 'connected') statusDot.classList.add('bg-green-500');
-            if (state === 'error') statusDot.classList.add('bg-red-500');
+        // --- Utility Functions ---
+        function generateShortId() {
+            // Gera um ID no formato ABC-123
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const numbers = '0123456789';
+            let l = ''; let n = '';
+            for(let i=0; i<3; i++) l += letters.charAt(Math.floor(Math.random() * letters.length));
+            for(let i=0; i<3; i++) n += numbers.charAt(Math.floor(Math.random() * numbers.length));
+            return `${l}-${n}`;
         }
 
         function showAlert(title, message) {
@@ -389,394 +304,263 @@
             document.getElementById('alert-modal').classList.add('hidden');
         });
 
-        async function copyToClipboard(elementId) {
-            const el = document.getElementById(elementId);
-            if (!el.value) return;
-
-            try {
-                await navigator.clipboard.writeText(el.value);
-            } catch (e) {
-                // Fallback para contextos sem suporte à Clipboard API
-                el.select();
-                el.setSelectionRange(0, 99999);
-                document.execCommand('copy');
-            }
-
-            const originalBorder = el.style.borderColor;
-            el.style.borderColor = '#10B981'; // green-500
-            setTimeout(() => { el.style.borderColor = originalBorder; }, 500);
+        function updateStatusUI(state, text) {
+            statusText.innerText = text;
+            statusDot.className = 'w-2.5 h-2.5 rounded-full';
+            if (state === 'neutral') statusDot.classList.add('bg-gray-500');
+            if (state === 'waiting') statusDot.classList.add('bg-yellow-400', 'animate-pulse');
+            if (state === 'connected') statusDot.classList.add('bg-green-500');
+            if (state === 'error') statusDot.classList.add('bg-red-500');
         }
 
-        async function pasteFromClipboard(elementId) {
-            const el = document.getElementById(elementId);
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text) el.value = text.trim();
-            } catch (e) {
-                showAlert("Aviso", "Não foi possível colar automaticamente (permissão do navegador). Cole manualmente com Ctrl+V.");
-            }
-        }
+        function switchScreen(target) {
+            if (target === 'home') endSession();
 
-        async function shareText(text) {
-            if (!text) return;
-            if (navigator.share) {
-                try {
-                    await navigator.share({ text });
-                } catch (e) {
-                    // Usuário cancelou o compartilhamento; nada a fazer.
-                }
-            } else {
-                showAlert("Aviso", "Compartilhamento nativo não é suportado neste navegador. Use o botão de copiar.");
+            screenHome.classList.add('hidden');
+            screenHost.classList.add('hidden');
+            screenGuest.classList.add('hidden');
+
+            if (target === 'home') {
+                screenHome.classList.remove('hidden');
+                updateStatusUI('neutral', 'Aguardando Ação');
+                role = null;
+            } else if (target === 'host') {
+                screenHost.classList.remove('hidden');
+                updateStatusUI('neutral', 'Modo Transmissor');
+                role = 'host';
+            } else if (target === 'guest') {
+                screenGuest.classList.remove('hidden');
+                updateStatusUI('neutral', 'Modo Espectador');
+                role = 'guest';
+                // Auto format input
+                guestRoomIdInput.addEventListener('input', function (e) {
+                    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (val.length > 3) {
+                        val = val.substring(0, 3) + '-' + val.substring(3, 6);
+                    }
+                    e.target.value = val;
+                });
             }
         }
 
-        // --- Compactação e Criptografia (100% local, via APIs nativas do navegador) ---
-        // Nenhuma biblioteca externa é usada aqui: apenas CompressionStream e Web Crypto,
-        // que já existem no navegador. Nada disso envolve rede ou servidor.
-        const FLAG_ENCRYPTED = 0x01;
-        const FLAG_COMPRESSED = 0x02;
-        const supportsCompression = (typeof CompressionStream !== 'undefined');
-
-        function bytesToBase64(bytes) {
-            let binary = '';
-            const chunkSize = 0x8000;
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-            }
-            return btoa(binary);
-        }
-
-        function base64ToBytes(base64) {
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            return bytes;
-        }
-
-        async function compressBytes(bytes) {
-            const cs = new CompressionStream('deflate');
-            const writer = cs.writable.getWriter();
-            writer.write(bytes);
-            writer.close();
-            return new Uint8Array(await new Response(cs.readable).arrayBuffer());
-        }
-
-        async function decompressBytes(bytes) {
-            const ds = new DecompressionStream('deflate');
-            const writer = ds.writable.getWriter();
-            writer.write(bytes);
-            writer.close();
-            return new Uint8Array(await new Response(ds.readable).arrayBuffer());
-        }
-
-        async function deriveKey(passphrase, salt) {
-            const enc = new TextEncoder();
-            const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']);
-            return crypto.subtle.deriveKey(
-                { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
-                keyMaterial,
-                { name: 'AES-GCM', length: 256 },
-                false,
-                ['encrypt', 'decrypt']
-            );
-        }
-
-        async function encryptBytes(bytes, passphrase) {
-            const salt = crypto.getRandomValues(new Uint8Array(16));
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const key = await deriveKey(passphrase, salt);
-            const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes));
-            const out = new Uint8Array(salt.length + iv.length + ciphertext.length);
-            out.set(salt, 0);
-            out.set(iv, salt.length);
-            out.set(ciphertext, salt.length + iv.length);
-            return out;
-        }
-
-        async function decryptBytes(bytes, passphrase) {
-            const salt = bytes.slice(0, 16);
-            const iv = bytes.slice(16, 28);
-            const ciphertext = bytes.slice(28);
-            const key = await deriveKey(passphrase, salt);
-            const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-            return new Uint8Array(plain);
-        }
-
-        // Empacota { d: RTCSessionDescription } em um código curto, sempre compactado
-        // e, se uma senha for informada, também criptografado (AES-256-GCM).
-        async function encodePayload(dataObj, passphrase) {
-            let bytes = new TextEncoder().encode(JSON.stringify(dataObj));
-            let flags = 0;
-
-            if (supportsCompression) {
-                bytes = await compressBytes(bytes);
-                flags |= FLAG_COMPRESSED;
-            }
-            if (passphrase) {
-                bytes = await encryptBytes(bytes, passphrase);
-                flags |= FLAG_ENCRYPTED;
-            }
-
-            const out = new Uint8Array(bytes.length + 1);
-            out[0] = flags;
-            out.set(bytes, 1);
-            return bytesToBase64(out);
-        }
-
-        async function decodePayload(base64Str, passphrase) {
-            const all = base64ToBytes(base64Str);
-            const flags = all[0];
-            let bytes = all.slice(1);
-
-            if (flags & FLAG_ENCRYPTED) {
-                if (!passphrase) throw new Error('SENHA_NECESSARIA');
-                bytes = await decryptBytes(bytes, passphrase);
-            }
-            if (flags & FLAG_COMPRESSED) {
-                bytes = await decompressBytes(bytes);
-            }
-            return JSON.parse(new TextDecoder().decode(bytes));
-        }
-
-        // Extrai a impressão digital do certificado DTLS de um SDP
-        function extractFingerprint(sdp) {
-            const match = sdp.match(/a=fingerprint:\S+ ([0-9A-Fa-f:]+)/);
-            return match ? match[1].toUpperCase() : null;
-        }
-
-        // Gera um código curto de verificação a partir das impressões digitais
-        // (local + remota) já presentes na conexão — nenhum dado novo é criado ou enviado,
-        // e ambos os lados chegam ao MESMO código apenas se a conexão não foi interceptada.
-        async function computeVerificationCode(pc) {
-            try {
-                const localFp = extractFingerprint(pc.localDescription.sdp);
-                const remoteFp = extractFingerprint(pc.remoteDescription.sdp);
-                if (!localFp || !remoteFp) return null;
-                const combined = [localFp, remoteFp].sort().join('|');
-                const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combined));
-                const h = new Uint8Array(digest);
-                const num = ((h[0] << 16) | (h[1] << 8) | h[2]) % 1000000;
-                return num.toString().padStart(6, '0');
-            } catch (e) {
-                console.error(e);
-                return null;
-            }
-        }
-
-        // --- Lógica WebRTC ---
-        function finalizeIceGathering() {
-            if (iceGatheringFinalized) return;
-            iceGatheringFinalized = true;
-            clearTimeout(iceTimeoutTimer);
-
-            const passphrase = (role === 'host' ? hostPassphrase.value : guestPassphrase.value).trim();
-
-            encodePayload({ d: peerConnection.localDescription }, passphrase).then((encodedData) => {
-                if (role === 'host') {
-                    hostInviteText.value = encodedData;
-                    btnGenerateOffer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Convite Gerado`;
-                    btnGenerateOffer.classList.replace('bg-blue-600', 'bg-green-600');
-                    updateStatusUI('waiting', 'Aguardando Convidado');
-                } else if (role === 'guest') {
-                    guestAnswerText.value = encodedData;
-                    btnGenerateAnswer.innerHTML = "Resposta Gerada (Copie abaixo)";
-                    btnGenerateAnswer.classList.replace('bg-purple-600', 'bg-green-600');
-                    updateStatusUI('waiting', 'Pronto para receber');
-                    guestVideoOverlayText.innerText = "Resposta gerada! Envie ao anfitrião e aguarde a conexão...";
-                }
-                // Tenta copiar automaticamente; se o navegador bloquear (sem gesto do usuário
-                // recente), o botão "Copiar" continua disponível como alternativa manual.
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(encodedData).catch(() => {});
-                }
-            }).catch((e) => {
-                console.error(e);
-                showAlert("Erro", "Não foi possível gerar o código de conexão.");
+        function copyRoomId() {
+            if(!currentRoomId) return;
+            navigator.clipboard.writeText(currentRoomId).then(() => {
+                const el = hostRoomIdElement;
+                const originalClass = el.className;
+                el.classList.add('bg-green-900/50', 'text-green-400', 'border-green-500');
+                setTimeout(() => { el.className = originalClass; }, 600);
+            }).catch(err => {
+                showAlert("Erro", "Não foi possível copiar automaticamente. Copie manualmente o ID.");
             });
         }
 
-        async function createPeerConnection(isHost) {
-            if (peerConnection) peerConnection.close();
-            peerConnection = new RTCPeerConnection(webrtcConfig);
-            iceGatheringFinalized = false;
+        // --- PeerJS Configuration ---
+        // Usamos um prefixo para isolar nossos IDs na rede pública do PeerJS
+        const APP_PREFIX = 'P2P-PRO-V1-'; 
 
-            if (isHost && localStream) {
-                // Adiciona as faixas de vídeo locais (Anfitrião)
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
+        function initializePeer(id = null) {
+            const peerOptions = {
+                debug: 2,
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            };
+            
+            if (id) {
+                myPeer = new Peer(APP_PREFIX + id, peerOptions);
             } else {
-                // Convidado configura para apenas receber vídeo
-                peerConnection.addTransceiver('video', { direction: 'recvonly' });
+                myPeer = new Peer(peerOptions); // Deixa o PeerJS gerar ID pro Guest
             }
 
-            // Ouve as faixas recebidas (Executado no Convidado)
-            peerConnection.ontrack = (event) => {
-                if (!remoteVideo.srcObject) {
-                    remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
-                }
-                
-                event.track.onended = () => {
-                     guestVideoOverlay.classList.remove('hidden');
-                     guestVideoOverlayText.innerText = "A transmissão foi encerrada pelo anfitrião.";
-                     btnFullscreen.classList.add('hidden');
-                     updateStatusUI('error', 'Desconectado');
-                };
-            };
-
-            // Status da Conexão
-            peerConnection.onconnectionstatechange = () => {
-                if (peerConnection.connectionState === 'connected') {
-                    if (isHost) {
-                        hostSetupContainer.classList.add('hidden');
-                        hostActiveContainer.classList.remove('hidden');
-                        updateStatusUI('connected', 'Transmissão Ativa');
+            return new Promise((resolve, reject) => {
+                myPeer.on('open', (assignedId) => {
+                    resolve(assignedId);
+                });
+                myPeer.on('error', (err) => {
+                    console.error("PeerJS Error:", err);
+                    if(err.type === 'unavailable-id') {
+                        reject(new Error("Este ID já está em uso. Tente novamente."));
                     } else {
-                        // Convidado: Oculta caixas e exibe vídeo APENAS QUANDO A CONEXÃO ESTIVER 100% PRONTA
-                        guestVideoOverlay.classList.add('hidden');
-                        guestSetupContainer.classList.add('hidden'); 
-                        btnFullscreen.classList.remove('hidden');    
-                        updateStatusUI('connected', 'Assistindo Tela');
-                        
-                        // Força a reprodução do vídeo para contornar bloqueios de autoplay
-                        if (remoteVideo.paused) {
-                            remoteVideo.play().catch(e => console.error("Falha no Autoplay do Vídeo:", e));
-                        }
+                        reject(new Error("Falha ao conectar aos servidores de sinalização."));
                     }
-
-                    // Código curto para as duas pontas confirmarem visualmente/por voz
-                    // que ninguém interceptou a troca do convite/resposta.
-                    computeVerificationCode(peerConnection).then((code) => {
-                        if (!code) return;
-                        const formatted = code.slice(0, 3) + ' ' + code.slice(3);
-                        if (isHost) {
-                            hostVerificationCode.innerText = formatted;
-                        } else {
-                            guestVerificationCode.innerText = formatted;
-                            guestVerificationRow.classList.remove('hidden');
-                            guestVerificationRow.classList.add('flex');
-                        }
-                    });
-                } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
-                    showAlert("Erro", "A conexão P2P foi perdida.");
-                    updateStatusUI('error', 'Conexão Perdida');
-                    if (!isHost) guestVideoOverlay.classList.remove('hidden');
-                }
-            };
-
-            // Coleta de candidatos ICE (Rotas de Rede)
-            // Lógica funcional de tempo de espera (4000ms) idêntica ao código que funcionou para você
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    clearTimeout(iceTimeoutTimer);
-                    iceTimeoutTimer = setTimeout(() => {
-                        if (peerConnection.iceGatheringState !== 'complete') {
-                            finalizeIceGathering();
-                        }
-                    }, 4000); 
-                }
-            };
-
-            peerConnection.onicegatheringstatechange = () => {
-                if (peerConnection.iceGatheringState === 'complete') {
-                    finalizeIceGathering();
-                }
-            };
+                });
+            });
         }
 
-        // --- Ações do Host ---
-        btnGenerateOffer.addEventListener('click', async () => {
-            btnGenerateOffer.disabled = true;
-            btnGenerateOffer.innerText = "Solicitando permissão...";
+        // --- Host Logic ---
+        function updateViewerList() {
+            const ids = Object.keys(connections);
+            hostViewerCount.innerText = ids.length;
+            hostViewerList.innerHTML = '';
+            
+            if (ids.length === 0) {
+                hostViewerList.innerHTML = '<li class="text-gray-500 italic py-1">Ninguém conectado ainda.</li>';
+                return;
+            }
+
+            ids.forEach((id, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center py-1.5 border-b border-gray-700/50 last:border-0";
+                li.innerHTML = `
+                    <span class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> 
+                        Espectador ${index + 1}
+                    </span>
+                    <span class="text-gray-600 text-[10px] uppercase font-mono">${id.substring(0, 8)}...</span>
+                `;
+                hostViewerList.appendChild(li);
+            });
+        }
+
+        btnStartHost.addEventListener('click', async () => {
+            btnStartHost.disabled = true;
+            btnStartHost.innerHTML = "Solicitando permissão da tela...";
             
             try {
+                // 1. Obter mídia local
                 localStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always", width: { ideal: 1920 }, height: { ideal: 1080 } },
-                    audio: false
+                    video: { cursor: "always" },
+                    audio: false // Para compartilhar o som do sistema, mude para true
                 });
                 
-                // Pré-visualização para o anfitrião
-                localVideoPreview.srcObject = localStream;
-                hostVideoOverlay.classList.add('hidden');
+                // Mostrar preview para o host
+                hostLocalVideo.srcObject = localStream;
+                hostLocalVideo.style.display = 'block';
+                hostVideoOverlay.style.display = 'none';
 
+                // Lidar com botão "Parar Compartilhamento" do navegador
                 localStream.getVideoTracks()[0].onended = () => {
-                    endSession(); // Se o usuário parar pelo navegador
+                    showAlert("Aviso", "Transmissão da tela encerrada.");
+                    endSession();
                 };
+
+                btnStartHost.innerHTML = "Criando Sala...";
+
+                // 2. Conectar à rede PeerJS com ID Fixo
+                currentRoomId = generateShortId();
+                await initializePeer(currentRoomId);
                 
+                // 3. Configurar UI Ativa
+                hostRoomIdElement.innerText = currentRoomId;
+                hostSetupContainer.classList.add('hidden');
+                hostActiveContainer.classList.remove('hidden');
+                updateStatusUI('waiting', 'Transmitindo e Aguardando');
+
+                // 4. Aguardar conexões recebidas (Call)
+                // Usaremos DataConnections para ouvir quem quer entrar, e então nós ligamos (call) enviando o stream.
+                // Mas a forma mais robusta no PeerJS para "Broadcast" é o Espectador ligar para o Host, e o Host responder com o Stream.
+                
+                myPeer.on('call', (call) => {
+                    console.log("Recebida ligação de: ", call.peer);
+                    // Responde a chamada com o nosso stream de tela
+                    call.answer(localStream);
+                    
+                    // Salvar conexão
+                    connections[call.peer] = call;
+                    updateViewerList();
+
+                    call.on('close', () => {
+                        console.log("Espectador desconectou: ", call.peer);
+                        delete connections[call.peer];
+                        updateViewerList();
+                    });
+                    
+                    call.on('error', (err) => {
+                        console.error("Erro na chamada: ", err);
+                        delete connections[call.peer];
+                        updateViewerList();
+                    });
+                });
+
             } catch (err) {
-                showAlert("Erro", "Você precisa permitir a captura de tela para transmitir.");
-                btnGenerateOffer.disabled = false;
-                btnGenerateOffer.innerText = "Selecionar Tela e Gerar Convite";
-                return;
-            }
-
-            btnGenerateOffer.innerText = "Mapeando Rotas (Aguarde)...";
-
-            await createPeerConnection(true);
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-        });
-
-        btnConnectHost.addEventListener('click', async () => {
-            const answerCode = hostPasteAnswer.value.trim();
-            if (!answerCode) {
-                showAlert("Atenção", "Cole a resposta do convidado primeiro.");
-                return;
-            }
-
-            btnConnectHost.innerText = "Conectando...";
-            try {
-                const payload = await decodePayload(answerCode, hostPassphrase.value.trim());
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.d));
-            } catch (e) {
-                console.error(e);
-                if (e.message === 'SENHA_NECESSARIA') {
-                    showAlert("Senha necessária", "Esta resposta está protegida por senha. Informe a mesma senha usada para gerar o convite.");
-                } else {
-                    showAlert("Erro", "O código de resposta é inválido, a senha está incorreta, ou o código está corrompido.");
-                }
-                btnConnectHost.innerText = "Iniciar Transmissão";
+                console.error(err);
+                showAlert("Erro", err.message || "Permissão de tela negada.");
+                btnStartHost.disabled = false;
+                btnStartHost.innerHTML = "Iniciar Transmissão";
             }
         });
 
-        // --- Ações do Guest ---
-        btnGenerateAnswer.addEventListener('click', async () => {
-            const offerCode = guestPasteOffer.value.trim();
-            if (!offerCode) {
-                showAlert("Atenção", "Cole o convite do anfitrião primeiro.");
+        // --- Guest Logic ---
+        btnConnectGuest.addEventListener('click', async () => {
+            const rawId = guestRoomIdInput.value.trim();
+            if (rawId.length !== 7 || !rawId.includes('-')) {
+                showAlert("Erro", "Formato de ID inválido. Use o formato ABC-123.");
                 return;
             }
 
-            btnGenerateAnswer.disabled = true;
-            btnGenerateAnswer.innerText = "Processando...";
-            guestVideoOverlayText.innerText = "Gerando resposta...";
+            const targetPeerId = APP_PREFIX + rawId;
+            btnConnectGuest.disabled = true;
+            btnConnectGuest.innerHTML = "Conectando ao servidor...";
+            guestVideoOverlayText.innerHTML = `<svg class="w-8 h-8 animate-spin mx-auto mb-2 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Localizando Sala...`;
 
             try {
-                const payload = await decodePayload(offerCode, guestPassphrase.value.trim());
-                await createPeerConnection(false);
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.d));
+                // 1. Conectar à rede com ID dinâmico
+                await initializePeer();
                 
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-            } catch (e) {
-                console.error(e);
-                if (e.message === 'SENHA_NECESSARIA') {
-                    showAlert("Senha necessária", "Este convite está protegido por senha. Peça a senha ao anfitrião e informe-a acima.");
-                } else {
-                    showAlert("Erro", "O código do convite é inválido, a senha está incorreta, ou o código está corrompido.");
+                // 2. Ligar para o Anfitrião
+                btnConnectGuest.innerHTML = "Estabelecendo P2P...";
+                guestVideoOverlayText.innerHTML = "Negociando conexão segura com a sala...";
+                
+                // Opção para receber apenas vídeo
+                const call = myPeer.call(targetPeerId, null, {
+                    metadata: { type: 'viewer' } // Se quiséssemos enviar dados extras
+                });
+
+                if (!call) {
+                     throw new Error("Não foi possível iniciar a chamada para a sala.");
                 }
-                btnGenerateAnswer.disabled = false;
-                btnGenerateAnswer.innerText = "2. Processar e Gerar Resposta";
-                guestVideoOverlayText.innerText = "Conclua os passos acima para ver a tela.";
+
+                // 3. Receber Mídia
+                call.on('stream', (remoteStream) => {
+                    console.log("Stream P2P recebido do anfitrião!");
+                    guestRemoteVideo.srcObject = remoteStream;
+                    
+                    // UX
+                    guestSetupContainer.classList.add('hidden');
+                    guestActiveContainer.classList.remove('hidden');
+                    guestVideoOverlay.classList.add('hidden');
+                    btnFullscreen.classList.remove('hidden');
+                    updateStatusUI('connected', 'Assistindo Tela');
+                });
+
+                call.on('close', () => {
+                    endSession();
+                    showAlert("Aviso", "O Anfitrião encerrou a transmissão.");
+                });
+
+                call.on('error', (err) => {
+                    console.error("Call error", err);
+                    endSession();
+                    showAlert("Erro", "A conexão com a sala falhou ou foi rejeitada.");
+                });
+
+                // timeout de segurança caso a sala não exista
+                setTimeout(() => {
+                    if (!guestRemoteVideo.srcObject) {
+                        endSession();
+                        showAlert("Erro", "Sala não encontrada ou não está transmitindo no momento.");
+                    }
+                }, 15000); // 15s limite para o stream chegar
+
+            } catch (err) {
+                console.error(err);
+                showAlert("Erro", err.message);
+                btnConnectGuest.disabled = false;
+                btnConnectGuest.innerHTML = "Conectar";
+                guestVideoOverlayText.innerHTML = "Insira o ID da Sala para assistir.";
             }
         });
 
-        // --- Funções de Tela Cheia e Limpeza ---
+        // --- Fullscreen and Cleanup ---
         btnFullscreen.addEventListener('click', () => {
             if (!document.fullscreenElement) {
                 if (guestVideoWrapper.requestFullscreen) {
                     guestVideoWrapper.requestFullscreen();
-                } else if (guestVideoWrapper.webkitRequestFullscreen) { /* Safari */
+                } else if (guestVideoWrapper.webkitRequestFullscreen) {
                     guestVideoWrapper.webkitRequestFullscreen();
                 }
             } else {
@@ -787,49 +571,46 @@
         });
 
         function endSession() {
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
+            // Fechar PeerJS
+            if (myPeer) {
+                myPeer.destroy();
+                myPeer = null;
             }
+            
+            // Parar mídia local
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
+
+            connections = {};
+            currentRoomId = null;
             
             // Reset Host UI
-            localVideoPreview.srcObject = null;
-            hostVideoOverlay.classList.remove('hidden');
+            hostLocalVideo.srcObject = null;
+            hostLocalVideo.style.display = 'none';
+            hostVideoOverlay.style.display = 'flex';
             hostSetupContainer.classList.remove('hidden');
             hostActiveContainer.classList.add('hidden');
-            hostInviteText.value = '';
-            hostPasteAnswer.value = '';
-            hostPassphrase.value = '';
-            hostVerificationCode.innerText = '------';
-            btnGenerateOffer.disabled = false;
-            btnGenerateOffer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Selecionar Tela e Gerar Convite`;
-            btnGenerateOffer.classList.replace('bg-green-600', 'bg-blue-600');
-            btnConnectHost.innerText = "Iniciar Transmissão";
+            btnStartHost.disabled = false;
+            btnStartHost.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Iniciar Transmissão`;
+            updateViewerList();
 
             // Reset Guest UI
-            remoteVideo.srcObject = null;
+            guestRemoteVideo.srcObject = null;
             guestSetupContainer.classList.remove('hidden');
+            guestActiveContainer.classList.add('hidden');
             guestVideoOverlay.classList.remove('hidden');
-            guestVideoOverlayText.innerText = "Conclua os passos acima para ver a tela.";
+            guestVideoOverlayText.innerHTML = "Insira o ID da Sala para assistir.";
             btnFullscreen.classList.add('hidden');
-            guestPasteOffer.value = '';
-            guestAnswerText.value = '';
-            guestPassphrase.value = '';
-            guestVerificationCode.innerText = '------';
-            guestVerificationRow.classList.add('hidden');
-            guestVerificationRow.classList.remove('flex');
-            btnGenerateAnswer.disabled = false;
-            btnGenerateAnswer.innerText = "2. Processar e Gerar Resposta";
-            btnGenerateAnswer.classList.replace('bg-green-600', 'bg-purple-600');
+            guestRoomIdInput.value = '';
+            btnConnectGuest.disabled = false;
+            btnConnectGuest.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Conectar`;
 
             updateStatusUI('neutral', 'Sessão Encerrada');
+            if(role) switchScreen('home');
         }
 
-        // Segurança ao fechar aba
         window.addEventListener('beforeunload', () => {
             endSession();
         });
